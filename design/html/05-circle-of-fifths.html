@@ -1,0 +1,199 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>05-circle-of-fifths</title><style>
+@font-face{font-family:Unbounded;src:url(Unbounded.ttf);font-weight:100 900}
+@font-face{font-family:Manrope;src:url(Manrope.ttf);font-weight:100 900}
+body{margin:0;background:#07070B}a{color:#C9C4FF}</style></head><body>
+
+<div style="width: 1440px; height: 900px; position: relative; overflow: hidden; background: #07070B; font-family: Manrope, system-ui, sans-serif; color: #EDEBF5">
+
+  <div style="position: absolute; left: 0; right: 0; top: 0; height: 80px; box-sizing: border-box; padding: 0 64px; display: flex; align-items: center; justify-content: space-between">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <div style="width: 10px; height: 10px; border-radius: 50%; background: #E879F9; box-shadow: 0 0 14px #E879F9"></div>
+      <div style="font-family: Unbounded, sans-serif; font-weight: 800; font-size: 18px; letter-spacing: 0.22em; color: #F4F2FF">STRUNA</div>
+    </div>
+    <nav style="display: flex; gap: 6px">
+      <a href="Main.dc.html" style="padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none; color: #9C98B3">Играть</a>
+      <a href="Tuner.dc.html" style="padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none; color: #9C98B3">Тюнер</a>
+      <a href="Circle.dc.html" style="padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none; color: #F4F2FF; background: rgba(255,255,255,0.08)">Теория</a>
+    </nav>
+  </div>
+
+  <div style="position: absolute; left: 64px; top: 92px; display: flex; gap: 8px">
+    <a href="Circle.dc.html" style="padding: 9px 16px; border-radius: 999px; border: 1px solid #A78BFA; background: rgba(167,139,250,0.14); font-size: 13px; font-weight: 700; text-decoration: none; color: #DCD2FF">Квинтовый круг</a>
+    <a href="Fretboard.dc.html" style="padding: 9px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.16); font-size: 13px; font-weight: 700; text-decoration: none; color: #C9C6DA">Гриф и лады</a>
+  </div>
+
+  <div style="position:absolute; left:110px; top:180px; width:640px; height:640px; border-radius:50%; background:conic-gradient(from -14.5deg, #13131D 0deg 29deg, #07070B 29deg 30deg, #13131D 30deg 59deg, #07070B 59deg 60deg, #13131D 60deg 89deg, #07070B 89deg 90deg, rgba(167,139,250,0.34) 90deg 119deg, #07070B 119deg 120deg, #A78BFA 120deg 149deg, #07070B 149deg 150deg, rgba(167,139,250,0.34) 150deg 179deg, #07070B 179deg 180deg, #13131D 180deg 209deg, #07070B 209deg 210deg, #13131D 210deg 239deg, #07070B 239deg 240deg, #13131D 240deg 269deg, #07070B 269deg 270deg, #13131D 270deg 299deg, #07070B 299deg 300deg, #13131D 300deg 329deg, #07070B 329deg 330deg, #13131D 330deg 359deg, #07070B 359deg 360deg); box-shadow:0 0 0 1px rgba(255,255,255,0.12), 0 0 80px rgba(167,139,250,0.18);"></div>
+  <div style="position:absolute; left:220px; top:290px; width:420px; height:420px; border-radius:50%; background:conic-gradient(from -14.5deg, #0F0F18 0deg 29deg, #07070B 29deg 30deg, #0F0F18 30deg 59deg, #07070B 59deg 60deg, #0F0F18 60deg 89deg, #07070B 89deg 90deg, rgba(232,121,249,0.26) 90deg 119deg, #07070B 119deg 120deg, #E879F9 120deg 149deg, #07070B 149deg 150deg, rgba(232,121,249,0.26) 150deg 179deg, #07070B 179deg 180deg, #0F0F18 180deg 209deg, #07070B 209deg 210deg, #0F0F18 210deg 239deg, #07070B 239deg 240deg, #0F0F18 240deg 269deg, #07070B 269deg 270deg, #0F0F18 270deg 299deg, #07070B 299deg 300deg, #0F0F18 300deg 329deg, #07070B 329deg 330deg, #0F0F18 330deg 359deg, #07070B 359deg 360deg); box-shadow:0 0 0 6px #07070B;"></div>
+  <div style="position:absolute; left:318px; top:388px; width:224px; height:224px; border-radius:50%; background:#07070B; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; box-shadow:0 0 0 1px rgba(255,255,255,0.08);">
+    <div style="font-family: Unbounded, sans-serif; font-weight: 800; font-size: 56px; color: #F4F2FF; line-height: 1">E</div>
+    <div style="font-size: 13px; font-weight: 700; color: #C9B8FF">ми мажор · 4♯</div>
+  </div>
+  
+    <div style="position:absolute; left:382px; top:208px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#F4F2FF;">C</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">—</div>
+    </div>
+  
+    <div style="position:absolute; left:515px; top:244px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#F4F2FF;">G</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">1♯</div>
+    </div>
+  
+    <div style="position:absolute; left:612px; top:341px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#F4F2FF;">D</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">2♯</div>
+    </div>
+  
+    <div style="position:absolute; left:648px; top:474px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#F4F2FF;">A</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">3♯</div>
+    </div>
+  
+    <div style="position:absolute; left:612px; top:607px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#0A0A12;">E</div>
+      <div style="font-size:11px; font-weight:700; color:#2A1F55;">4♯</div>
+    </div>
+  
+    <div style="position:absolute; left:515px; top:704px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#F4F2FF;">B</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">5♯</div>
+    </div>
+  
+    <div style="position:absolute; left:382px; top:740px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:15px; color:#F4F2FF;">F♯/G♭</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">6♯/6♭</div>
+    </div>
+  
+    <div style="position:absolute; left:249px; top:704px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#F4F2FF;">D♭</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">5♭</div>
+    </div>
+  
+    <div style="position:absolute; left:152px; top:607px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#F4F2FF;">A♭</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">4♭</div>
+    </div>
+  
+    <div style="position:absolute; left:116px; top:474px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#F4F2FF;">E♭</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">3♭</div>
+    </div>
+  
+    <div style="position:absolute; left:152px; top:341px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#F4F2FF;">B♭</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">2♭</div>
+    </div>
+  
+    <div style="position:absolute; left:249px; top:244px; width:96px; height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+      <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:22px; color:#F4F2FF;">F</div>
+      <div style="font-size:11px; font-weight:700; color:#8E8AA6;">1♭</div>
+    </div>
+  
+  
+    <div style="position:absolute; left:388px; top:324px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#D8D4EA;">Am</div>
+  
+    <div style="position:absolute; left:469px; top:346px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#D8D4EA;">Em</div>
+  
+    <div style="position:absolute; left:527px; top:405px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#D8D4EA;">Bm</div>
+  
+    <div style="position:absolute; left:549px; top:485px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#D8D4EA;">F♯m</div>
+  
+    <div style="position:absolute; left:527px; top:566px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#0A0A12;">C♯m</div>
+  
+    <div style="position:absolute; left:469px; top:624px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#D8D4EA;">G♯m</div>
+  
+    <div style="position:absolute; left:388px; top:646px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:11px; color:#D8D4EA;">D♯m/E♭m</div>
+  
+    <div style="position:absolute; left:308px; top:624px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#D8D4EA;">B♭m</div>
+  
+    <div style="position:absolute; left:249px; top:566px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#D8D4EA;">Fm</div>
+  
+    <div style="position:absolute; left:227px; top:485px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#D8D4EA;">Cm</div>
+  
+    <div style="position:absolute; left:249px; top:405px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#D8D4EA;">Gm</div>
+  
+    <div style="position:absolute; left:307px; top:346px; width:84px; height:30px; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; color:#D8D4EA;">Dm</div>
+  
+
+  <div style="position: absolute; left: 860px; top: 170px; width: 516px; display: flex; flex-direction: column; gap: 26px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 12px; letter-spacing: 0.18em; font-weight: 700; color: #9C98B3">ТОНАЛЬНОСТЬ</div>
+      <div style="font-family: Unbounded, sans-serif; font-weight: 800; font-size: 40px; color: #F4F2FF">Ми мажор</div>
+      <div style="display: flex; gap: 8px; margin-top: 6px">
+        <button style="padding: 9px 16px; border-radius: 999px; border: 1px solid #A78BFA; background: rgba(167,139,250,0.14); color: #DCD2FF; font-family: Manrope, sans-serif; font-size: 13px; font-weight: 700; cursor: pointer">Мажор</button>
+        <button style="padding: 9px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.16); background: transparent; color: #C9C6DA; font-family: Manrope, sans-serif; font-size: 13px; font-weight: 700; cursor: pointer">Минор</button>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 14px; background: #0F0F17; border: 1px solid rgba(255,255,255,0.08)">
+        <div style="font-size: 11px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3">ЗНАКИ</div>
+        <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 18px; color: #F4F2FF">F♯ C♯ G♯ D♯</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 14px; background: #0F0F17; border: 1px solid rgba(255,255,255,0.08)">
+        <div style="font-size: 11px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3">ПАРАЛЛЕЛЬНЫЙ МИНОР</div>
+        <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 18px; color: #F5B8FA">C♯m</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div style="font-size: 12px; letter-spacing: 0.18em; font-weight: 700; color: #9C98B3">АККОРДЫ ТОНАЛЬНОСТИ</div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px">
+        
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 4px; border-radius:12px; background:#0F0F17; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size: 11px; font-weight: 700; color: #9C98B3">I</div>
+            <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 15px; color: #F4F2FF">E</div>
+            <div style="font-size:11px; font-weight:800; color:#A78BFA;">T</div>
+          </div>
+        
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 4px; border-radius:12px; background:#0F0F17; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size: 11px; font-weight: 700; color: #9C98B3">ii</div>
+            <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 15px; color: #F4F2FF">F♯m</div>
+            <div style="font-size:11px; font-weight:800; color:#34E39A;">S</div>
+          </div>
+        
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 4px; border-radius:12px; background:#0F0F17; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size: 11px; font-weight: 700; color: #9C98B3">iii</div>
+            <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 15px; color: #F4F2FF">G♯m</div>
+            <div style="font-size:11px; font-weight:800; color:#A78BFA;">T</div>
+          </div>
+        
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 4px; border-radius:12px; background:#0F0F17; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size: 11px; font-weight: 700; color: #9C98B3">IV</div>
+            <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 15px; color: #F4F2FF">A</div>
+            <div style="font-size:11px; font-weight:800; color:#34E39A;">S</div>
+          </div>
+        
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 4px; border-radius:12px; background:#0F0F17; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size: 11px; font-weight: 700; color: #9C98B3">V</div>
+            <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 15px; color: #F4F2FF">B</div>
+            <div style="font-size:11px; font-weight:800; color:#FFB020;">D</div>
+          </div>
+        
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 4px; border-radius:12px; background:#0F0F17; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size: 11px; font-weight: 700; color: #9C98B3">vi</div>
+            <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 15px; color: #F4F2FF">C♯m</div>
+            <div style="font-size:11px; font-weight:800; color:#A78BFA;">T</div>
+          </div>
+        
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 4px; border-radius:12px; background:#0F0F17; border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size: 11px; font-weight: 700; color: #9C98B3">vii°</div>
+            <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 15px; color: #F4F2FF">D♯°</div>
+            <div style="font-size:11px; font-weight:800; color:#FFB020;">D</div>
+          </div>
+        
+      </div>
+      <div style="display: flex; gap: 18px; font-size: 12px; font-weight: 600; color: #9C98B3">
+        <div>T — тоника</div><div>S — субдоминанта</div><div>D — доминанта</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div style="font-size: 12px; letter-spacing: 0.18em; font-weight: 700; color: #9C98B3">СОСЕДНИЕ ТОНАЛЬНОСТИ</div>
+      <div style="font-size: 15px; color: #C9C6DA">A мажор (IV) и B мажор (V) — отличаются одним знаком, в них проще всего модулировать.</div>
+    </div>
+
+    <a href="Fretboard.dc.html" style="align-self: flex-start; padding: 14px 22px; border-radius: 14px; background: #EDEBF5; color: #0A0A12; font-weight: 800; font-size: 15px; text-decoration: none">Показать на грифе</a>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,90 @@
+/*
+ * Дизайн-токены STRUNA — единый источник цветов, шрифтов, радиусов и эффектов.
+ * Значения взяты из design/tokens.md и HTML-макетов в design/html.
+ */
+:root {
+  /* Фоны */
+  --color-bg: #07070b;
+  --color-surface: #0c0c14;
+  --color-surface-2: #0f0f17;
+  --color-surface-3: #11111a;
+  --color-overlay-hover: rgba(255, 255, 255, 0.05);
+  --color-overlay-active: rgba(255, 255, 255, 0.08);
+
+  /* Рамки */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-mid: rgba(255, 255, 255, 0.14);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+
+  /* Текст */
+  --color-text: #edebf5;
+  --color-text-strong: #f4f2ff;
+  --color-text-soft: #c9c6da;
+  --color-text-muted: #9c98b3;
+  --color-text-dim: #8e8aa6;
+  --color-text-inverse: #0a0a12;
+
+  /* Акцент интерфейса (активные чипы, фокус) */
+  --color-accent: #a78bfa;
+  --color-accent-bg: rgba(167, 139, 250, 0.14);
+  --color-accent-text: #dcd2ff;
+  --color-brand: #e879f9;
+
+  /* Цвета струн: 7 — самая низкая, 1 — самая высокая. На 6 струнах 7-я не используется */
+  --string-7: #a78bfa;
+  --string-6: #ff5c7a;
+  --string-5: #ffb020;
+  --string-4: #3b9eff;
+  --string-3: #ff7a3d;
+  --string-2: #34e39a;
+  --string-1: #e879f9;
+
+  /* Оценки попаданий */
+  --grade-perfect: #34e39a;
+  --grade-perfect-text: #7cf5c0;
+  --grade-good: #ffb020;
+  --grade-good-text: #ffd27a;
+  --grade-miss: #ff5c7a;
+
+  /* Шрифты */
+  --font-display: 'Unbounded', system-ui, sans-serif;
+  --font-ui: 'Manrope', system-ui, sans-serif;
+
+  /* Капс-лейблы */
+  --caps-size: 12px;
+  --caps-tracking: 0.16em;
+
+  /* Радиусы */
+  --radius-note: 12px;
+  --radius-btn: 12px;
+  --radius-tile: 14px;
+  --radius-card: 20px;
+  --radius-chip: 999px;
+
+  /* Раскладка */
+  --header-height: 80px;
+  --page-gutter: 64px;
+  --control-height: 48px;
+
+  /* Свечение: 0 0 22px <цвет 85%>, 0 0 60px <цвет 35%> */
+  --glow-brand: 0 0 14px var(--color-brand);
+  --glow-accent: 0 0 22px rgba(167, 139, 250, 0.85), 0 0 60px rgba(167, 139, 250, 0.35);
+
+  /* Движение */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 140ms;
+  --dur-page: 240ms;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --page-gutter: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-page: 0ms;
+  }
+}

@@ -1,0 +1,376 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>06-fretboard</title><style>
+@font-face{font-family:Unbounded;src:url(Unbounded.ttf);font-weight:100 900}
+@font-face{font-family:Manrope;src:url(Manrope.ttf);font-weight:100 900}
+body{margin:0;background:#07070B}a{color:#C9C4FF}</style></head><body>
+
+<div style="width: 1440px; height: 900px; position: relative; overflow: hidden; background: #07070B; font-family: Manrope, system-ui, sans-serif; color: #EDEBF5">
+
+  <div style="position: absolute; left: 0; right: 0; top: 0; height: 80px; box-sizing: border-box; padding: 0 64px; display: flex; align-items: center; justify-content: space-between">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <div style="width: 10px; height: 10px; border-radius: 50%; background: #E879F9; box-shadow: 0 0 14px #E879F9"></div>
+      <div style="font-family: Unbounded, sans-serif; font-weight: 800; font-size: 18px; letter-spacing: 0.22em; color: #F4F2FF">STRUNA</div>
+    </div>
+    <nav style="display: flex; gap: 6px">
+      <a href="Main.dc.html" style="padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none; color: #9C98B3">Играть</a>
+      <a href="Tuner.dc.html" style="padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none; color: #9C98B3">Тюнер</a>
+      <a href="Circle.dc.html" style="padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none; color: #F4F2FF; background: rgba(255,255,255,0.08)">Теория</a>
+    </nav>
+  </div>
+
+  <div style="position: absolute; left: 64px; top: 92px; display: flex; gap: 8px">
+    <a href="Circle.dc.html" style="padding: 9px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.16); font-size: 13px; font-weight: 700; text-decoration: none; color: #C9C6DA">Квинтовый круг</a>
+    <a href="Fretboard.dc.html" style="padding: 9px 16px; border-radius: 999px; border: 1px solid #A78BFA; background: rgba(167,139,250,0.14); font-size: 13px; font-weight: 700; text-decoration: none; color: #DCD2FF">Гриф и лады</a>
+  </div>
+
+  <div style="position: absolute; left: 64px; right: 64px; top: 150px; display: flex; align-items: flex-end; gap: 16px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="key" style="font-size: 11px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3">ТОНИКА</label>
+      <select id="key" style="width: 110px; height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); background: #11111A; color: #EDEBF5; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 700"><option>E</option><option>F</option><option>F♯</option><option>G</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="mode" style="font-size: 11px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3">ЛАД / ГАММА</label>
+      <select id="mode" style="width: 300px; height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(167,139,250,0.5); background: #11111A; color: #EDEBF5; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 700">
+        <option>Натуральный минор (эолийский)</option><option>Мажор (ионийский)</option><option>Дорийский</option><option>Фригийский</option><option>Лидийский</option><option>Миксолидийский</option><option>Локрийский</option><option>Гармонический минор</option><option>Мелодический минор</option><option>Минорная пентатоника</option><option>Мажорная пентатоника</option><option>Блюзовая гамма</option>
+      </select>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="tune" style="font-size: 11px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3">СТРОЙ</label>
+      <select id="tune" style="width: 220px; height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); background: #11111A; color: #EDEBF5; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 700"><option>7 стр. · Standard B</option></select>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 11px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3">ПОДПИСИ</div>
+      <div style="display: flex; height: 44px; padding: 3px; box-sizing: border-box; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); gap: 3px">
+        <button style="padding:0 14px; border-radius:9px; border:none; cursor:pointer; font-family:Manrope, sans-serif; font-size:14px; font-weight:700; background:#EDEBF5; color:#0A0A12;">Ноты</button>
+        <button style="padding:0 14px; border-radius:9px; border:none; cursor:pointer; font-family:Manrope, sans-serif; font-size:14px; font-weight:700; background:transparent; color:#C9C6DA;">Ступени</button>
+      </div>
+    </div>
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 16px; border-radius: 12px; background: rgba(52,227,154,0.1); border: 1px solid rgba(52,227,154,0.45)">
+      <div style="width: 9px; height: 9px; border-radius: 50%; background: #34E39A; box-shadow: 0 0 10px #34E39A"></div>
+      <div style="font-size: 14px; font-weight: 700; color: #7CF5C0">Живой гриф: слушаю вход</div>
+    </div>
+  </div>
+
+  <div style="position:absolute; left:100px; top:236px; width:1264px; height:332px; border-radius:10px; background:#0C0C14; box-shadow:0 0 0 1px rgba(255,255,255,0.08), 0 0 60px rgba(120,100,255,0.12);"></div>
+  
+    <div style="position:absolute; left:161px; top:236px; width:6px; height:332px; background:#D8D4EA;"></div>
+  
+    <div style="position:absolute; left:243px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:323px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:403px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:483px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:563px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:643px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:723px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:803px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:883px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:963px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:1043px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:1123px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:1203px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:1283px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+    <div style="position:absolute; left:1363px; top:236px; width:2px; height:332px; background:rgba(255,255,255,0.16);"></div>
+  
+  
+    <div style="position:absolute; left:100px; top:263.5px; width:1264px; height:1px; background:rgba(220,215,240,0.5);"></div>
+    <div style="position:absolute; left:60px; top:253px; width:24px; text-align:center; font-family:Unbounded, sans-serif; font-weight:800; font-size:15px; color:#E879F9;">E</div>
+  
+    <div style="position:absolute; left:100px; top:309.3px; width:1264px; height:1.4px; background:rgba(220,215,240,0.5);"></div>
+    <div style="position:absolute; left:60px; top:299px; width:24px; text-align:center; font-family:Unbounded, sans-serif; font-weight:800; font-size:15px; color:#34E39A;">B</div>
+  
+    <div style="position:absolute; left:100px; top:355.1px; width:1264px; height:1.8px; background:rgba(220,215,240,0.5);"></div>
+    <div style="position:absolute; left:60px; top:345px; width:24px; text-align:center; font-family:Unbounded, sans-serif; font-weight:800; font-size:15px; color:#FF7A3D;">G</div>
+  
+    <div style="position:absolute; left:100px; top:400.9px; width:1264px; height:2.2px; background:rgba(220,215,240,0.5);"></div>
+    <div style="position:absolute; left:60px; top:391px; width:24px; text-align:center; font-family:Unbounded, sans-serif; font-weight:800; font-size:15px; color:#3B9EFF;">D</div>
+  
+    <div style="position:absolute; left:100px; top:446.7px; width:1264px; height:2.6px; background:rgba(220,215,240,0.5);"></div>
+    <div style="position:absolute; left:60px; top:437px; width:24px; text-align:center; font-family:Unbounded, sans-serif; font-weight:800; font-size:15px; color:#FFB020;">A</div>
+  
+    <div style="position:absolute; left:100px; top:492.5px; width:1264px; height:3px; background:rgba(220,215,240,0.5);"></div>
+    <div style="position:absolute; left:60px; top:483px; width:24px; text-align:center; font-family:Unbounded, sans-serif; font-weight:800; font-size:15px; color:#FF5C7A;">E</div>
+  
+    <div style="position:absolute; left:100px; top:538.3px; width:1264px; height:3.4px; background:rgba(220,215,240,0.5);"></div>
+    <div style="position:absolute; left:60px; top:529px; width:24px; text-align:center; font-family:Unbounded, sans-serif; font-weight:800; font-size:15px; color:#A78BFA;">B</div>
+  
+  
+    <div style="position:absolute; left:359px; top:590px; width:10px; height:10px; border-radius:50%; background:#5C5873;"></div>
+  
+    <div style="position:absolute; left:519px; top:590px; width:10px; height:10px; border-radius:50%; background:#5C5873;"></div>
+  
+    <div style="position:absolute; left:679px; top:590px; width:10px; height:10px; border-radius:50%; background:#5C5873;"></div>
+  
+    <div style="position:absolute; left:839px; top:590px; width:10px; height:10px; border-radius:50%; background:#5C5873;"></div>
+  
+    <div style="position:absolute; left:1319px; top:590px; width:10px; height:10px; border-radius:50%; background:#5C5873;"></div>
+  
+    <div style="position:absolute; left:1070px; top:590px; width:10px; height:10px; border-radius:50%; background:#5C5873;"></div>
+  
+    <div style="position:absolute; left:1088px; top:590px; width:10px; height:10px; border-radius:50%; background:#5C5873;"></div>
+  
+  
+    <div style="position:absolute; left:112px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">0</div>
+  
+    <div style="position:absolute; left:184px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">1</div>
+  
+    <div style="position:absolute; left:264px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">2</div>
+  
+    <div style="position:absolute; left:344px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">3</div>
+  
+    <div style="position:absolute; left:424px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">4</div>
+  
+    <div style="position:absolute; left:504px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">5</div>
+  
+    <div style="position:absolute; left:584px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">6</div>
+  
+    <div style="position:absolute; left:664px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">7</div>
+  
+    <div style="position:absolute; left:744px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">8</div>
+  
+    <div style="position:absolute; left:824px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">9</div>
+  
+    <div style="position:absolute; left:904px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">10</div>
+  
+    <div style="position:absolute; left:984px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">11</div>
+  
+    <div style="position:absolute; left:1064px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">12</div>
+  
+    <div style="position:absolute; left:1144px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">13</div>
+  
+    <div style="position:absolute; left:1224px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">14</div>
+  
+    <div style="position:absolute; left:1304px; top:608px; width:40px; text-align:center; font-size:12px; font-weight:700; color:#8E8AA6;">15</div>
+  
+  
+    <div style="position:absolute; left:114px; top:246px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#E879F9; color:#0A0A12; box-shadow:0 0 14px #E879F999;">E</div>
+  
+    <div style="position:absolute; left:266px; top:246px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">F♯</div>
+  
+    <div style="position:absolute; left:346px; top:246px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#FFB020; color:#0A0A12; box-shadow:0 0 14px #FFB02099;">G</div>
+  
+    <div style="position:absolute; left:506px; top:246px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">A</div>
+  
+    <div style="position:absolute; left:666px; top:246px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#3B9EFF; color:#0A0A12; box-shadow:0 0 14px #3B9EFF99;">B</div>
+  
+    <div style="position:absolute; left:746px; top:246px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">C</div>
+  
+    <div style="position:absolute; left:906px; top:246px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">D</div>
+  
+    <div style="position:absolute; left:1066px; top:246px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#E879F9; color:#0A0A12; box-shadow:0 0 14px #E879F999;">E</div>
+  
+    <div style="position:absolute; left:1226px; top:246px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">F♯</div>
+  
+    <div style="position:absolute; left:1306px; top:246px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#FFB020; color:#0A0A12; box-shadow:0 0 14px #FFB02099;">G</div>
+  
+    <div style="position:absolute; left:114px; top:292px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#3B9EFF; color:#0A0A12; box-shadow:0 0 14px #3B9EFF99;">B</div>
+  
+    <div style="position:absolute; left:186px; top:292px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">C</div>
+  
+    <div style="position:absolute; left:346px; top:292px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">D</div>
+  
+    <div style="position:absolute; left:506px; top:292px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#E879F9; color:#0A0A12; box-shadow:0 0 14px #E879F999;">E</div>
+  
+    <div style="position:absolute; left:666px; top:292px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">F♯</div>
+  
+    <div style="position:absolute; left:746px; top:292px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#FFB020; color:#0A0A12; box-shadow:0 0 14px #FFB02099;">G</div>
+  
+    <div style="position:absolute; left:906px; top:292px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">A</div>
+  
+    <div style="position:absolute; left:1066px; top:292px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#3B9EFF; color:#0A0A12; box-shadow:0 0 14px #3B9EFF99;">B</div>
+  
+    <div style="position:absolute; left:1146px; top:292px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">C</div>
+  
+    <div style="position:absolute; left:1306px; top:292px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">D</div>
+  
+    <div style="position:absolute; left:110px; top:334px; width:44px; height:44px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; background:#FFB020; color:#0A0A12; box-shadow:0 0 14px #FFB02099; border:3px solid #FFFFFF; box-shadow:0 0 0 4px rgba(255,255,255,0.18), 0 0 28px #FFFFFF;">G</div>
+  
+    <div style="position:absolute; left:266px; top:338px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">A</div>
+  
+    <div style="position:absolute; left:426px; top:338px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#3B9EFF; color:#0A0A12; box-shadow:0 0 14px #3B9EFF99;">B</div>
+  
+    <div style="position:absolute; left:506px; top:338px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">C</div>
+  
+    <div style="position:absolute; left:666px; top:338px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">D</div>
+  
+    <div style="position:absolute; left:826px; top:338px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#E879F9; color:#0A0A12; box-shadow:0 0 14px #E879F999;">E</div>
+  
+    <div style="position:absolute; left:986px; top:338px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">F♯</div>
+  
+    <div style="position:absolute; left:1066px; top:338px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#FFB020; color:#0A0A12; box-shadow:0 0 14px #FFB02099;">G</div>
+  
+    <div style="position:absolute; left:1226px; top:338px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">A</div>
+  
+    <div style="position:absolute; left:114px; top:384px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">D</div>
+  
+    <div style="position:absolute; left:266px; top:384px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#E879F9; color:#0A0A12; box-shadow:0 0 14px #E879F999;">E</div>
+  
+    <div style="position:absolute; left:426px; top:384px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">F♯</div>
+  
+    <div style="position:absolute; left:502px; top:380px; width:44px; height:44px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; background:#FFB020; color:#0A0A12; box-shadow:0 0 14px #FFB02099; border:3px solid #FFFFFF; box-shadow:0 0 0 4px rgba(255,255,255,0.18), 0 0 28px #FFFFFF;">G</div>
+  
+    <div style="position:absolute; left:666px; top:384px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">A</div>
+  
+    <div style="position:absolute; left:826px; top:384px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#3B9EFF; color:#0A0A12; box-shadow:0 0 14px #3B9EFF99;">B</div>
+  
+    <div style="position:absolute; left:906px; top:384px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">C</div>
+  
+    <div style="position:absolute; left:1066px; top:384px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">D</div>
+  
+    <div style="position:absolute; left:1226px; top:384px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#E879F9; color:#0A0A12; box-shadow:0 0 14px #E879F999;">E</div>
+  
+    <div style="position:absolute; left:114px; top:430px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">A</div>
+  
+    <div style="position:absolute; left:266px; top:430px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#3B9EFF; color:#0A0A12; box-shadow:0 0 14px #3B9EFF99;">B</div>
+  
+    <div style="position:absolute; left:346px; top:430px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">C</div>
+  
+    <div style="position:absolute; left:506px; top:430px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">D</div>
+  
+    <div style="position:absolute; left:666px; top:430px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#E879F9; color:#0A0A12; box-shadow:0 0 14px #E879F999;">E</div>
+  
+    <div style="position:absolute; left:826px; top:430px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">F♯</div>
+  
+    <div style="position:absolute; left:902px; top:426px; width:44px; height:44px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; background:#FFB020; color:#0A0A12; box-shadow:0 0 14px #FFB02099; border:3px solid #FFFFFF; box-shadow:0 0 0 4px rgba(255,255,255,0.18), 0 0 28px #FFFFFF;">G</div>
+  
+    <div style="position:absolute; left:1066px; top:430px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">A</div>
+  
+    <div style="position:absolute; left:1226px; top:430px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#3B9EFF; color:#0A0A12; box-shadow:0 0 14px #3B9EFF99;">B</div>
+  
+    <div style="position:absolute; left:1306px; top:430px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">C</div>
+  
+    <div style="position:absolute; left:114px; top:476px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#E879F9; color:#0A0A12; box-shadow:0 0 14px #E879F999;">E</div>
+  
+    <div style="position:absolute; left:266px; top:476px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">F♯</div>
+  
+    <div style="position:absolute; left:346px; top:476px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#FFB020; color:#0A0A12; box-shadow:0 0 14px #FFB02099;">G</div>
+  
+    <div style="position:absolute; left:506px; top:476px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">A</div>
+  
+    <div style="position:absolute; left:666px; top:476px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#3B9EFF; color:#0A0A12; box-shadow:0 0 14px #3B9EFF99;">B</div>
+  
+    <div style="position:absolute; left:746px; top:476px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">C</div>
+  
+    <div style="position:absolute; left:906px; top:476px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">D</div>
+  
+    <div style="position:absolute; left:1066px; top:476px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#E879F9; color:#0A0A12; box-shadow:0 0 14px #E879F999;">E</div>
+  
+    <div style="position:absolute; left:1226px; top:476px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">F♯</div>
+  
+    <div style="position:absolute; left:1302px; top:472px; width:44px; height:44px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:15px; background:#FFB020; color:#0A0A12; box-shadow:0 0 14px #FFB02099; border:3px solid #FFFFFF; box-shadow:0 0 0 4px rgba(255,255,255,0.18), 0 0 28px #FFFFFF;">G</div>
+  
+    <div style="position:absolute; left:114px; top:522px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#3B9EFF; color:#0A0A12; box-shadow:0 0 14px #3B9EFF99;">B</div>
+  
+    <div style="position:absolute; left:186px; top:522px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">C</div>
+  
+    <div style="position:absolute; left:346px; top:522px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">D</div>
+  
+    <div style="position:absolute; left:506px; top:522px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#E879F9; color:#0A0A12; box-shadow:0 0 14px #E879F999;">E</div>
+  
+    <div style="position:absolute; left:666px; top:522px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">F♯</div>
+  
+    <div style="position:absolute; left:746px; top:522px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#FFB020; color:#0A0A12; box-shadow:0 0 14px #FFB02099;">G</div>
+  
+    <div style="position:absolute; left:906px; top:522px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">A</div>
+  
+    <div style="position:absolute; left:1066px; top:522px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#3B9EFF; color:#0A0A12; box-shadow:0 0 14px #3B9EFF99;">B</div>
+  
+    <div style="position:absolute; left:1146px; top:522px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">C</div>
+  
+    <div style="position:absolute; left:1306px; top:522px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Unbounded, sans-serif; font-weight:700; font-size:12px; background:#2A2840; color:#EDEBF5; border:1px solid rgba(255,255,255,0.3);">D</div>
+  
+
+  <div style="position:absolute; right:64px; top:642px; display:flex; gap:20px; font-size:13px; font-weight:600; color:#C9C6DA;">
+    <div style="display: flex; align-items: center; gap: 8px"><div style="width: 12px; height: 12px; border-radius: 50%; background: #E879F9"></div>Тоника</div>
+    <div style="display: flex; align-items: center; gap: 8px"><div style="width: 12px; height: 12px; border-radius: 50%; background: #FFB020"></div>Терция</div>
+    <div style="display: flex; align-items: center; gap: 8px"><div style="width: 12px; height: 12px; border-radius: 50%; background: #3B9EFF"></div>Квинта</div>
+    <div style="display: flex; align-items: center; gap: 8px"><div style="width: 12px; height: 12px; box-sizing: border-box; border-radius: 50%; background: #2A2840; border: 1px solid rgba(255,255,255,0.35)"></div>Ступень гаммы</div>
+    <div style="display: flex; align-items: center; gap: 8px"><div style="width: 12px; height: 12px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; box-shadow: 0 0 8px #FFFFFF"></div>Звучит сейчас</div>
+  </div>
+
+  <div style="position: absolute; left: 64px; right: 64px; bottom: 44px; display: flex; gap: 32px; align-items: stretch">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: baseline; gap: 14px">
+        <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 20px; color: #F4F2FF">E натуральный минор</div>
+        <div style="font-size: 13px; color: #9C98B3">параллельный мажор — G · 1♯</div>
+      </div>
+      <div style="display: flex; gap: 8px">
+        
+          <div style="width:64px; height:64px; box-sizing:border-box; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:#E879F9;">
+            <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:18px; color:#0A0A12;">E</div>
+            <div style="font-size:12px; font-weight:700; color:rgba(10,10,18,0.75);">1</div>
+          </div>
+        
+          <div style="width:64px; height:64px; box-sizing:border-box; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:#1A1928; border:1px solid rgba(255,255,255,0.18);">
+            <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:18px; color:#F4F2FF;">F♯</div>
+            <div style="font-size:12px; font-weight:700; color:#9C98B3;">2</div>
+          </div>
+        
+          <div style="width:64px; height:64px; box-sizing:border-box; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:#FFB020;">
+            <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:18px; color:#0A0A12;">G</div>
+            <div style="font-size:12px; font-weight:700; color:rgba(10,10,18,0.75);">♭3</div>
+          </div>
+        
+          <div style="width:64px; height:64px; box-sizing:border-box; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:#1A1928; border:1px solid rgba(255,255,255,0.18);">
+            <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:18px; color:#F4F2FF;">A</div>
+            <div style="font-size:12px; font-weight:700; color:#9C98B3;">4</div>
+          </div>
+        
+          <div style="width:64px; height:64px; box-sizing:border-box; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:#3B9EFF;">
+            <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:18px; color:#0A0A12;">B</div>
+            <div style="font-size:12px; font-weight:700; color:rgba(10,10,18,0.75);">5</div>
+          </div>
+        
+          <div style="width:64px; height:64px; box-sizing:border-box; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:#1A1928; border:1px solid rgba(255,255,255,0.18);">
+            <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:18px; color:#F4F2FF;">C</div>
+            <div style="font-size:12px; font-weight:700; color:#9C98B3;">♭6</div>
+          </div>
+        
+          <div style="width:64px; height:64px; box-sizing:border-box; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:#1A1928; border:1px solid rgba(255,255,255,0.18);">
+            <div style="font-family:Unbounded, sans-serif; font-weight:800; font-size:18px; color:#F4F2FF;">D</div>
+            <div style="font-size:12px; font-weight:700; color:#9C98B3;">♭7</div>
+          </div>
+        
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center">
+        <div style="font-size: 11px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3; margin-right: 6px">АККОРДЫ</div>
+        
+          <div style="padding: 7px 12px; border-radius: 10px; background: #0F0F17; border: 1px solid rgba(255,255,255,0.1); font-family: Unbounded, sans-serif; font-weight: 700; font-size: 13px; color: #EDEBF5">Em</div>
+        
+          <div style="padding: 7px 12px; border-radius: 10px; background: #0F0F17; border: 1px solid rgba(255,255,255,0.1); font-family: Unbounded, sans-serif; font-weight: 700; font-size: 13px; color: #EDEBF5">F♯°</div>
+        
+          <div style="padding: 7px 12px; border-radius: 10px; background: #0F0F17; border: 1px solid rgba(255,255,255,0.1); font-family: Unbounded, sans-serif; font-weight: 700; font-size: 13px; color: #EDEBF5">G</div>
+        
+          <div style="padding: 7px 12px; border-radius: 10px; background: #0F0F17; border: 1px solid rgba(255,255,255,0.1); font-family: Unbounded, sans-serif; font-weight: 700; font-size: 13px; color: #EDEBF5">Am</div>
+        
+          <div style="padding: 7px 12px; border-radius: 10px; background: #0F0F17; border: 1px solid rgba(255,255,255,0.1); font-family: Unbounded, sans-serif; font-weight: 700; font-size: 13px; color: #EDEBF5">Bm</div>
+        
+          <div style="padding: 7px 12px; border-radius: 10px; background: #0F0F17; border: 1px solid rgba(255,255,255,0.1); font-family: Unbounded, sans-serif; font-weight: 700; font-size: 13px; color: #EDEBF5">C</div>
+        
+          <div style="padding: 7px 12px; border-radius: 10px; background: #0F0F17; border: 1px solid rgba(255,255,255,0.1); font-family: Unbounded, sans-serif; font-weight: 700; font-size: 13px; color: #EDEBF5">D</div>
+        
+      </div>
+    </div>
+    <div style="width: 440px; box-sizing: border-box; padding: 22px 24px; border-radius: 18px; background: #0C0C14; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 22px">
+      <div style="width: 84px; height: 84px; box-sizing: border-box; border-radius: 50%; border: 3px solid #FFFFFF; box-shadow: 0 0 26px rgba(255,255,255,0.55); background: #FFB020; display: flex; align-items: center; justify-content: center; font-family: Unbounded, sans-serif; font-weight: 800; font-size: 26px; color: #0A0A12">G</div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div style="font-size: 11px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3">СЕЙЧАС ЗВУЧИТ</div>
+        <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 20px; color: #F4F2FF">G3 · ♭3</div>
+        <div style="font-size: 14px; font-weight: 600; color: #7CF5C0">Входит в гамму · 4 позиции на грифе</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,153 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>03-tuner</title><style>
+@font-face{font-family:Unbounded;src:url(Unbounded.ttf);font-weight:100 900}
+@font-face{font-family:Manrope;src:url(Manrope.ttf);font-weight:100 900}
+body{margin:0;background:#07070B}a{color:#C9C4FF}</style></head><body>
+
+<div style="width: 1440px; height: 900px; position: relative; overflow: hidden; background: #07070B; font-family: Manrope, system-ui, sans-serif; color: #EDEBF5; display: flex; flex-direction: column">
+
+  <div style="height: 80px; box-sizing: border-box; padding: 0 64px; display: flex; align-items: center; justify-content: space-between">
+    <div style="display: flex; align-items: center; gap: 24px">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <div style="width: 10px; height: 10px; border-radius: 50%; background: #E879F9; box-shadow: 0 0 14px #E879F9"></div>
+        <div style="font-family: Unbounded, sans-serif; font-weight: 800; font-size: 18px; letter-spacing: 0.22em; color: #F4F2FF">STRUNA</div>
+      </div>
+      <div style="width: 1px; height: 32px; background: rgba(255,255,255,0.14)"></div>
+      <div style="font-weight: 700; font-size: 16px; color: #F4F2FF">Тюнер</div>
+    </div>
+    <a href="Main.dc.html" style="padding: 12px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); font-size: 14px; font-weight: 700; text-decoration: none; color: #EDEBF5">К игре</a>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; gap: 48px; padding: 24px 64px 48px 64px">
+
+    <div style="width: 300px; display: flex; flex-direction: column; gap: 28px">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <label for="dev" style="font-size: 12px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3">УСТРОЙСТВО ВВОДА</label>
+        <select id="dev" style="height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); background: #11111A; color: #EDEBF5; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 600">
+          <option>[Звуковая карта] — вход 1</option>
+        </select>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <label for="tuning" style="font-size: 12px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3">СТРОЙ</label>
+        <select id="tuning" style="height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(167,139,250,0.5); background: #11111A; color: #EDEBF5; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 600">
+          <option>7 стр. · Standard B</option>
+          <option>7 стр. · Drop A</option>
+          <option>6 стр. · Standard E</option>
+          <option>6 стр. · Drop D</option>
+          <option>6 стр. · Eb Standard</option>
+          <option>Свой строй…</option>
+        </select>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 12px; letter-spacing: 0.16em; font-weight: 700; color: #9C98B3">УРОВЕНЬ СИГНАЛА</div>
+        <div style="height: 10px; border-radius: 5px; background: rgba(255,255,255,0.08); position: relative">
+          <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 62%; border-radius: 5px; background: #34E39A; box-shadow: 0 0 12px rgba(52,227,154,0.6)"></div>
+          <div style="position: absolute; left: 85%; top: -4px; width: 2px; height: 18px; background: #FF5C7A"></div>
+        </div>
+        <div style="font-size: 13px; color: #9C98B3">Хороший уровень, без перегруза</div>
+      </div>
+      <button style="height: 48px; border-radius: 12px; border: 1px solid rgba(255,176,32,0.6); background: rgba(255,176,32,0.08); color: #FFD27A; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer">Калибровка задержки</button>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px">
+      <div style="display: flex; align-items: flex-start; gap: 6px">
+        <div style="font-family: Unbounded, sans-serif; font-weight: 800; font-size: 200px; line-height: 1; color: #FF5C7A; text-shadow: 0 0 40px rgba(255,92,122,0.6), 0 0 120px rgba(255,92,122,0.3)">E</div>
+        <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 48px; color: #FF9DB0; margin-top: 18px">2</div>
+      </div>
+      <div style="font-size: 18px; font-weight: 600; color: #C9C6DA">82,6 Гц · 6-я струна</div>
+
+      <div style="width: 780px; display: flex; flex-direction: column; gap: 14px">
+        <div style="position: relative; height: 90px">
+          <div style="position: absolute; left: 351px; top: 0; width: 78px; height: 90px; border-radius: 10px; background: rgba(52,227,154,0.1); border: 1px solid rgba(52,227,154,0.35)"></div>
+          
+            <div style="position:absolute; left:-1px; top:17px; width:2px; height:56px; border-radius:2px; background:rgba(255,255,255,0.35);"></div>
+          
+            <div style="position:absolute; left:38px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:77px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:116px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:155px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:194px; top:17px; width:2px; height:56px; border-radius:2px; background:rgba(255,255,255,0.35);"></div>
+          
+            <div style="position:absolute; left:233px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:272px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:311px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:350px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:388px; top:0px; width:4px; height:90px; border-radius:2px; background:#7CF5C0;"></div>
+          
+            <div style="position:absolute; left:428px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:467px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:506px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:545px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:584px; top:17px; width:2px; height:56px; border-radius:2px; background:rgba(255,255,255,0.35);"></div>
+          
+            <div style="position:absolute; left:623px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:662px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:701px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:740px; top:30px; width:2px; height:30px; border-radius:2px; background:rgba(255,255,255,0.16);"></div>
+          
+            <div style="position:absolute; left:779px; top:17px; width:2px; height:56px; border-radius:2px; background:rgba(255,255,255,0.35);"></div>
+          
+          <div style="position:absolute; left:418.2px; top:-10px; width:6px; height:110px; border-radius:3px; background:#F4FFF9; box-shadow:0 0 16px #34E39A, 0 0 40px rgba(52,227,154,0.7);"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #8E8AA6">
+          <div>−50</div><div>−25</div><div style="color: #7CF5C0">0</div><div>+25</div><div>+50</div>
+        </div>
+      </div>
+      <div style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 22px; color: #7CF5C0">+4 цента · почти в строе</div>
+
+      <div style="display: flex; gap: 12px">
+        
+          <button style="width:88px; height:76px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; font-family:Manrope, sans-serif; border:1px solid rgba(255,255,255,0.14); background:#0F0F17; box-shadow:none;">
+            <span style="font-family:Unbounded, sans-serif; font-weight:800; font-size:20px; color:#A78BFA;">B1</span>
+            <span style="font-size: 12px; font-weight: 600; color: #8E8AA6">7 стр.</span>
+          </button>
+        
+          <button style="width:88px; height:76px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; font-family:Manrope, sans-serif; border:2px solid #FF5C7A; background:rgba(255,92,122,0.16); box-shadow:0 0 26px rgba(255,92,122,0.5);">
+            <span style="font-family:Unbounded, sans-serif; font-weight:800; font-size:20px; color:#FF5C7A;">E2</span>
+            <span style="font-size: 12px; font-weight: 600; color: #8E8AA6">6 стр.</span>
+          </button>
+        
+          <button style="width:88px; height:76px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; font-family:Manrope, sans-serif; border:1px solid rgba(255,255,255,0.14); background:#0F0F17; box-shadow:none;">
+            <span style="font-family:Unbounded, sans-serif; font-weight:800; font-size:20px; color:#FFB020;">A2</span>
+            <span style="font-size: 12px; font-weight: 600; color: #8E8AA6">5 стр.</span>
+          </button>
+        
+          <button style="width:88px; height:76px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; font-family:Manrope, sans-serif; border:1px solid rgba(255,255,255,0.14); background:#0F0F17; box-shadow:none;">
+            <span style="font-family:Unbounded, sans-serif; font-weight:800; font-size:20px; color:#3B9EFF;">D3</span>
+            <span style="font-size: 12px; font-weight: 600; color: #8E8AA6">4 стр.</span>
+          </button>
+        
+          <button style="width:88px; height:76px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; font-family:Manrope, sans-serif; border:1px solid rgba(255,255,255,0.14); background:#0F0F17; box-shadow:none;">
+            <span style="font-family:Unbounded, sans-serif; font-weight:800; font-size:20px; color:#FF7A3D;">G3</span>
+            <span style="font-size: 12px; font-weight: 600; color: #8E8AA6">3 стр.</span>
+          </button>
+        
+          <button style="width:88px; height:76px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; font-family:Manrope, sans-serif; border:1px solid rgba(255,255,255,0.14); background:#0F0F17; box-shadow:none;">
+            <span style="font-family:Unbounded, sans-serif; font-weight:800; font-size:20px; color:#34E39A;">B3</span>
+            <span style="font-size: 12px; font-weight: 600; color: #8E8AA6">2 стр.</span>
+          </button>
+        
+          <button style="width:88px; height:76px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; font-family:Manrope, sans-serif; border:1px solid rgba(255,255,255,0.14); background:#0F0F17; box-shadow:none;">
+            <span style="font-family:Unbounded, sans-serif; font-weight:800; font-size:20px; color:#E879F9;">E4</span>
+            <span style="font-size: 12px; font-weight: 600; color: #8E8AA6">1 стр.</span>
+          </button>
+        
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>
