@@ -1,5 +1,8 @@
 import { midiToNoteName } from '@/domain/music/pitch'
 import type { Tuning } from '@/domain/music/tunings'
+import { pluralRu } from '@/domain/ru'
+
+export { pluralRu }
 
 export type TuneStatus = 'in-tune' | 'close' | 'flat' | 'sharp'
 
@@ -72,12 +75,4 @@ export function formatCents(cents: number): string {
   const abs = Math.abs(rounded)
   const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : ''
   return `${sign}${abs} ${pluralRu(abs, 'цент', 'цента', 'центов')}`
-}
-
-export function pluralRu(n: number, one: string, few: string, many: string): string {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return one
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
-  return many
 }

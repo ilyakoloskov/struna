@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import SelectField from '@/components/ui/SelectField.vue'
 import type { SelectOption } from '@/components/ui/types'
+import { TUNING_OPTIONS } from '@/components/ui/tuningOptions'
 import CentsMeter from '@/components/tuner/CentsMeter.vue'
 import CustomTuningEditor from '@/components/tuner/CustomTuningEditor.vue'
 import LevelMeter from '@/components/tuner/LevelMeter.vue'
@@ -11,7 +12,6 @@ import NoteDisplay from '@/components/tuner/NoteDisplay.vue'
 import StringButtons from '@/components/tuner/StringButtons.vue'
 import { useAudioInput } from '@/composables/useAudioInput'
 import { usePitchDetector } from '@/composables/usePitchDetector'
-import { TUNING_PRESETS, type TuningId } from '@/domain/music/tunings'
 import { computeTunerReading, formatCents, statusText } from '@/domain/tuner/reading'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -34,11 +34,6 @@ const deviceId = computed({
     input.selectedDeviceId.value = value || null
   },
 })
-
-const tuningOptions: SelectOption<TuningId>[] = [
-  ...TUNING_PRESETS.map((t) => ({ value: t.id, label: t.label })),
-  { value: 'custom', label: 'Свой строй…' },
-]
 
 const customModel = computed({
   get: () => customMidis.value,
@@ -94,7 +89,7 @@ const ERROR_TEXT: Record<string, string> = {
           :options="deviceOptions"
           :disabled="!isRunning"
         />
-        <SelectField v-model="tuningId" label="Строй" :options="tuningOptions" accent />
+        <SelectField v-model="tuningId" label="Строй" :options="TUNING_OPTIONS" accent />
         <CustomTuningEditor v-if="tuningId === 'custom'" v-model="customModel" />
         <LevelMeter :peak-db="input.peakDb.value" :active="isRunning" />
         <button type="button" class="calibrate" disabled title="Появится на этапе 8">

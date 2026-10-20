@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
 import PageContainer from '@/components/layout/PageContainer.vue'
+import { useTheoryQuery } from '@/composables/useTheoryQuery'
 
 const TABS = [
   { label: 'Квинтовый круг', name: 'theory-circle' },
   { label: 'Гриф и лады', name: 'theory-fretboard' },
 ] as const
+
+// Тональность, лад и строй живут в URL — ссылкой можно поделиться
+useTheoryQuery()
 </script>
 
 <template>
@@ -60,6 +64,6 @@ const TABS = [
 }
 
 .content {
-  margin-top: 40px;
+  margin-top: 28px;
 }
 </style>

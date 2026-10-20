@@ -39,6 +39,18 @@
   --string-2: #34e39a;
   --string-1: #e879f9;
 
+  /* Роли нот в гамме (гриф, круг) */
+  --role-tonic: var(--string-1);
+  --role-third: var(--string-5);
+  --role-fifth: var(--string-4);
+  --role-other-bg: #2a2840;
+  --role-other-border: rgba(255, 255, 255, 0.3);
+
+  /* Функции аккордов: тоника, субдоминанта, доминанта */
+  --function-t: #a78bfa;
+  --function-s: #34e39a;
+  --function-d: #ffb020;
+
   /* Оценки попаданий */
   --grade-perfect: #34e39a;
   --grade-perfect-text: #7cf5c0;

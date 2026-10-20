@@ -47,7 +47,12 @@ async function hasMicrophonePermission(): Promise<boolean> {
  * Доступ к звуковому входу. Пока экран, вызвавший composable, смонтирован, вход держится открытым;
  * когда последний такой экран закрыт — поток останавливается и микрофон освобождается.
  */
-export function useAudioInput() {
+export interface UseAudioInputOptions {
+  /** Включать вход при открытии экрана, если доступ уже выдан (тюнер — да, гриф — по кнопке) */
+  autoStart?: boolean
+}
+
+export function useAudioInput({ autoStart = true }: UseAudioInputOptions = {}) {
   const settings = useSettingsStore()
   const { inputDeviceId, tuning, a4 } = storeToRefs(settings)
 
@@ -126,7 +131,7 @@ export function useAudioInput() {
     }
     await refreshDevices()
     // Если доступ уже выдан — включаемся сразу, без лишнего клика
-    if (!audioInput.isRunning && (await hasMicrophonePermission())) await start()
+    if (autoStart && !audioInput.isRunning && (await hasMicrophonePermission())) await start()
   })
 
   onBeforeUnmount(() => {
