@@ -37,3 +37,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Временные эксперименты (стенды, не тесты проекта)
+src/__experiments__/

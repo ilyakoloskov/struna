@@ -8,7 +8,7 @@ import {
 } from '../selection'
 
 describe('parseTheoryQuery', () => {
-  it('пример из CLAUDE.md', () => {
+  it('пример ссылки на гриф из плана проекта', () => {
     expect(parseTheoryQuery({ key: 'E', mode: 'phrygian', tuning: '7-standard-b' })).toEqual({
       tonic: { letter: 'E', alt: 0 },
       scaleId: 'phrygian',

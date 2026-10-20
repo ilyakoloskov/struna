@@ -5,8 +5,12 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Базовый путь: на GitHub Pages сайт живёт в подпапке (/struna/), локально — в корне
+const base = process.env.BASE_PATH ?? '/'
+
 // https://vite.dev/config/
 export default defineConfig({
+  base,
   plugins: [
     vue(),
     vueDevTools(),
@@ -21,8 +25,8 @@ export default defineConfig({
         description:
           'Играй на настоящей гитаре: ноты на дорожке, распознавание звука, тюнер, квинтовый круг, гриф и лады.',
         lang: 'ru',
-        start_url: '/',
-        scope: '/',
+        start_url: base,
+        scope: base,
         display: 'fullscreen',
         display_override: ['fullscreen', 'standalone', 'minimal-ui'],
         orientation: 'landscape',
