@@ -45,6 +45,8 @@ export function useTransport() {
 
   return {
     clock,
+    /** Время трека для момента по часам AudioContext — точно, без привязки к кадрам */
+    songTimeAt: (contextTime: number) => transport.songTimeAt(contextTime),
     state,
     position,
     duration,

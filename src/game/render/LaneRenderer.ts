@@ -1,4 +1,5 @@
 import {
+  AdditiveBlending,
   Color,
   DynamicDrawUsage,
   HalfFloatType,
@@ -27,6 +28,7 @@ import {
   type LaneLayout,
 } from '../lane/geometry'
 import { forEachVisible, maxDuration, ringActivity } from '../lane/visibleNotes'
+import { NOTE_HIT, NOTE_MISSED } from '../noteState'
 import { createDigitTexture } from './digitTexture'
 import * as glsl from './shaders'
 
@@ -46,6 +48,14 @@ const NOTE_DEPTH = 0.44
 const TAIL_WIDTH = 0.19
 /** Сколько секунд плашка видна после линии удара */
 const NOTE_PAST = 0.06
+/** Подсказка «нота на линии» без попадания — слабее вспышки попадания */
+const GUIDE_LEVEL = 0.35
+/** Время спада вспышки кольца после попадания, с */
+const FLASH_DECAY = 0.15
+const PARTICLE_CAPACITY = 384
+const PARTICLE_GRAVITY = 9
+/** Промах: цвет плашки смешивается с серым */
+const MISSED_TINT = 0.75
 const RING_SIZE = 0.68
 
 export interface RendererOptions {
@@ -93,6 +103,18 @@ export class LaneRenderer {
   private ringMaterial!: ShaderMaterial
   private noteMaterial!: ShaderMaterial
   private readonly ringActivity: Float32Array
+  private readonly ringFlash: Float32Array
+  private noteStates: Uint8Array | null = null
+  private particlesLayer!: InstancedLayer
+  // Пул частиц: позиция, скорость, жизнь, цвет — в типизированных массивах
+  private readonly particle = {
+    position: new Float32Array(PARTICLE_CAPACITY * 3),
+    velocity: new Float32Array(PARTICLE_CAPACITY * 3),
+    life: new Float32Array(PARTICLE_CAPACITY),
+    maxLife: new Float32Array(PARTICLE_CAPACITY),
+    color: new Float32Array(PARTICLE_CAPACITY * 3),
+    next: 0,
+  }
 
   // Статистика кадров без аллокаций
   private readonly frameTimes = new Float32Array(120)
@@ -109,6 +131,7 @@ export class LaneRenderer {
     this.layout = createLayout(options.stringCount, options.lookahead)
     this.colors = options.stringColors.map((c) => new Color(c))
     this.ringActivity = new Float32Array(options.stringCount)
+    this.ringFlash = new Float32Array(options.stringCount)
 
     this.renderer = new WebGLRenderer({
       canvas,
@@ -151,10 +174,30 @@ export class LaneRenderer {
     this.noteMaterial.uniforms.uDigits!.value = digits
   }
 
+  /** Ноты партии; индексы совпадают с массивом состояний (неиграбельные пропускаются при отрисовке) */
   setNotes(notes: readonly FrettedNote[]): void {
-    // Неиграбельные ноты (вне строя) на дорожку не попадают
-    this.notes = notes.filter((n) => n.stringIndex >= 0 && n.stringIndex < this.layout.stringCount)
-    this.longestNote = maxDuration(this.notes)
+    this.notes = notes
+    this.longestNote = maxDuration(notes)
+  }
+
+  /** Состояния нот (ждёт / попал / промах) — массив общий с сессией игры */
+  setNoteStates(states: Uint8Array | null): void {
+    this.noteStates = states
+  }
+
+  /** Попадание: вспышка колец струн и всплеск частиц */
+  hit(strings: readonly number[], perfect: boolean): void {
+    for (const s of strings) {
+      if (s < 0 || s >= this.layout.stringCount) continue
+      this.ringFlash[s] = 1
+      if (!this.options.reducedMotion) this.burst(s, perfect ? 16 : 9)
+    }
+  }
+
+  /** Сбросить эффекты (новая попытка) */
+  resetEffects(): void {
+    this.ringFlash.fill(0)
+    this.particle.life.fill(0)
   }
 
   setBeats(beats: readonly Beat[]): void {
@@ -197,13 +240,18 @@ export class LaneRenderer {
 
   private frame() {
     const now = performance.now()
-    this.frameTimes[this.frameIndex] = now - this.lastFrame
+    const dtMs = now - this.lastFrame
+    this.frameTimes[this.frameIndex] = dtMs
     this.frameIndex = (this.frameIndex + 1) % this.frameTimes.length
     this.lastFrame = now
+    const dt = Math.min(0.1, dtMs / 1000)
 
     const songTime = this.clock?.now() ?? 0
+    const decay = Math.exp(-dt / FLASH_DECAY)
+    for (let i = 0; i < this.ringFlash.length; i++) this.ringFlash[i]! *= decay
     this.updateNotes(songTime)
     this.updateBeats(songTime)
+    this.updateParticles(dt)
     if (!this.options.reducedMotion) {
       this.ringMaterial.uniforms.uPulse!.value = 0.5 + 0.5 * Math.sin(now / 260)
     }
@@ -235,13 +283,19 @@ export class LaneRenderer {
     markUpdated(this.notesLayer)
     markUpdated(this.tailsLayer)
 
+    // Кольцо: максимум из подсказки «нота на линии» и вспышки попадания
     const active = this.ringsLayer.attributes.aActive!
-    ;(active.array as Float32Array).set(this.ringActivity)
+    const activeArray = active.array as Float32Array
+    for (let i = 0; i < this.ringActivity.length; i++) {
+      activeArray[i] = Math.max(this.ringActivity[i]! * GUIDE_LEVEL, this.ringFlash[i]!)
+    }
     active.needsUpdate = true
   }
 
   /** Обработчик видимой ноты — стрелочная функция-поле, создаётся один раз */
-  private readonly visitNote = (note: FrettedNote) => {
+  private readonly visitNote = (note: FrettedNote, index: number) => {
+    if (note.stringIndex < 0 || note.stringIndex >= this.layout.stringCount) return
+    const state = this.noteStates?.[index] ?? 0
     const layout = this.layout
     const songTime = this.frameTime
     const speed = laneSpeed(layout)
@@ -269,17 +323,72 @@ export class LaneRenderer {
       }
     }
 
-    // Сама нота исчезает сразу за линией удара — прошедшие ноты отвлекают
-    if (z <= NOTE_PAST * speed && this.noteCount < NOTE_CAPACITY) {
+    // Сыгранная нота исчезает; несыгранная — сразу за линией удара (прошедшие отвлекают)
+    if (state !== NOTE_HIT && z <= NOTE_PAST * speed && this.noteCount < NOTE_CAPACITY) {
       const a = this.notesLayer.attributes
       const i = this.noteCount
       write3(a.aOffset!, i, x, 0.01, z)
-      write3(a.aColor!, i, color.r, color.g, color.b)
+      if (state === NOTE_MISSED) {
+        const grey = (color.r + color.g + color.b) / 3
+        write3(
+          a.aColor!,
+          i,
+          (color.r + (grey * 0.4 - color.r) * MISSED_TINT) * 0.6,
+          (color.g + (grey * 0.4 - color.g) * MISSED_TINT) * 0.6,
+          (color.b + (grey * 0.4 - color.b) * MISSED_TINT) * 0.6,
+        )
+      } else {
+        write3(a.aColor!, i, color.r, color.g, color.b)
+      }
       const fret = Math.max(0, Math.min(ATLAS_MAX, note.fret))
       const digit = a.aDigit!.array as Float32Array
       for (let k = 0; k < 4; k++) digit[i * 4 + k] = DIGIT_UVS[fret * 4 + k]!
       this.noteCount++
     }
+  }
+
+  private burst(stringIndex: number, count: number) {
+    const p = this.particle
+    const color = this.colors[stringIndex]!
+    const x = stringX(stringIndex, this.layout)
+    for (let k = 0; k < count; k++) {
+      const i = p.next
+      p.next = (p.next + 1) % PARTICLE_CAPACITY
+      p.position[i * 3] = x + (Math.random() - 0.5) * 0.3
+      p.position[i * 3 + 1] = 0.05
+      p.position[i * 3 + 2] = (Math.random() - 0.5) * 0.2
+      p.velocity[i * 3] = (Math.random() - 0.5) * 3
+      p.velocity[i * 3 + 1] = 2 + Math.random() * 3
+      p.velocity[i * 3 + 2] = (Math.random() - 0.5) * 2
+      p.maxLife[i] = 0.35 + Math.random() * 0.3
+      p.life[i] = p.maxLife[i]!
+      p.color[i * 3] = color.r
+      p.color[i * 3 + 1] = color.g
+      p.color[i * 3 + 2] = color.b
+    }
+  }
+
+  private updateParticles(dt: number) {
+    const p = this.particle
+    const a = this.particlesLayer.attributes
+    let count = 0
+    for (let i = 0; i < PARTICLE_CAPACITY; i++) {
+      const life = p.life[i]!
+      if (life <= 0) continue
+      p.life[i] = life - dt
+      const i3 = i * 3
+      p.velocity[i3 + 1]! -= PARTICLE_GRAVITY * dt
+      p.position[i3]! += p.velocity[i3]! * dt
+      p.position[i3 + 1]! += p.velocity[i3 + 1]! * dt
+      p.position[i3 + 2]! += p.velocity[i3 + 2]! * dt
+      const fade = Math.max(0, p.life[i]! / p.maxLife[i]!)
+      write3(a.aOffset!, count, p.position[i3]!, p.position[i3 + 1]!, p.position[i3 + 2]!)
+      write2(a.aSize!, count, 0.09 + 0.06 * fade, fade)
+      write3(a.aColor!, count, p.color[i3]!, p.color[i3 + 1]!, p.color[i3 + 2]!)
+      count++
+    }
+    this.particlesLayer.geometry.instanceCount = count
+    markUpdated(this.particlesLayer)
   }
 
   private updateBeats(songTime: number) {
@@ -419,6 +528,19 @@ export class LaneRenderer {
       this.noteMaterial,
       5,
     )
+    this.particlesLayer = this.instanced(
+      PARTICLE_CAPACITY,
+      { aOffset: 3, aSize: 2, aColor: 3 },
+      new ShaderMaterial({
+        vertexShader: glsl.particleVertex,
+        fragmentShader: glsl.particleFragment,
+        transparent: true,
+        depthTest: false,
+        blending: AdditiveBlending,
+      }),
+      6,
+    )
+
     const noteSize = this.notesLayer.attributes.aSize!.array as Float32Array
     for (let i = 0; i < NOTE_CAPACITY; i++) {
       noteSize[i * 2] = NOTE_WIDTH * layout.stringSpacing

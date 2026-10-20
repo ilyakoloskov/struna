@@ -230,3 +230,36 @@ export const simpleVertex = /* glsl */ `
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `
+
+// --- Частицы попадания: квадраты, развёрнутые к камере, аддитивное смешивание ---
+
+export const particleVertex = /* glsl */ `
+  attribute vec3 aOffset;
+  attribute vec2 aSize;   // размер, яркость
+  attribute vec3 aColor;
+  varying vec2 vUv;
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+    vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+    vec3 p = aOffset + (right * position.x + up * position.y) * aSize.x;
+    vUv = uv;
+    vColor = aColor;
+    vAlpha = aSize.y;
+    gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+  }
+`
+
+export const particleFragment = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    float r = length(vUv - 0.5) * 2.0;
+    float dot = 1.0 - smoothstep(0.25, 1.0, r);
+    // Белая сердцевина и цветной ореол, ярче порога bloom
+    vec3 color = mix(vColor, vec3(1.0), 1.0 - smoothstep(0.0, 0.45, r)) * 2.2;
+    gl_FragColor = vec4(color * dot * vAlpha, dot * vAlpha);
+  }
+`

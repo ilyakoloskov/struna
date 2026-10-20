@@ -5,7 +5,7 @@ import type { Tuning } from '@/domain/music/tunings'
 import { formatClock } from '@/domain/time'
 
 // HUD поверх дорожки: трек, строй, прогресс, пауза, подписи струн.
-// Счёт, комбо и точность появятся на этапе 6.
+// Панели счёта, точности и входа — в слотах left / right / bottom-left / bottom-right.
 const props = defineProps<{
   title: string
   subtitle: string
@@ -55,6 +55,16 @@ const progress = computed(() =>
         </svg>
       </button>
     </header>
+
+    <div v-if="$slots.left" class="hud__side hud__side--left"><slot name="left" /></div>
+    <div v-if="$slots.right" class="hud__side hud__side--right"><slot name="right" /></div>
+    <div v-if="$slots['bottom-left']" class="hud__bottom hud__bottom--left">
+      <slot name="bottom-left" />
+    </div>
+    <div v-if="$slots['bottom-right']" class="hud__bottom hud__bottom--right">
+      <slot name="bottom-right" />
+    </div>
+    <slot />
 
     <div class="hud__strings" aria-hidden="true">
       <div
@@ -205,6 +215,40 @@ const progress = computed(() =>
   font-size: 11px;
   font-weight: 600;
   color: var(--color-text-dim);
+}
+
+.hud__side {
+  position: absolute;
+  top: 23vh;
+}
+
+.hud__side--left {
+  left: var(--page-gutter);
+}
+
+.hud__side--right {
+  right: var(--page-gutter);
+}
+
+.hud__bottom {
+  position: absolute;
+  bottom: 32px;
+}
+
+.hud__bottom--left {
+  left: var(--page-gutter);
+}
+
+.hud__bottom--right {
+  right: var(--page-gutter);
+}
+
+/* Панели по бокам не помещаются рядом с дорожкой на узких экранах */
+@media (max-width: 1180px) {
+  .hud__side,
+  .hud__bottom {
+    display: none;
+  }
 }
 
 @media (max-width: 900px) {

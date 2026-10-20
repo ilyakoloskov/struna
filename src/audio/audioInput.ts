@@ -7,7 +7,9 @@ import { createAnalysisConfig } from './dsp/analysisConfig'
 import {
   PITCH_PROCESSOR_NAME,
   type AnalysisFrameMessage,
+  type OnsetMessage,
   type ProcessorCommand,
+  type ProcessorMessage,
 } from './worklets/messages'
 
 export interface InputDevice {
@@ -36,6 +38,7 @@ export class AudioInputError extends Error {
 const GATE_RMS = 0.001
 
 type FrameListener = (frame: AnalysisFrameMessage) => void
+type OnsetListener = (onset: OnsetMessage) => void
 
 export class AudioInput {
   private context: AudioContext | null = null
@@ -45,6 +48,8 @@ export class AudioInput {
   private node: AudioWorkletNode | null = null
   private range: PitchRange | null = null
   private readonly listeners = new Set<FrameListener>()
+  private readonly onsetListeners = new Set<OnsetListener>()
+  private frameSeconds = 0
 
   get isRunning(): boolean {
     return this.node !== null
@@ -79,6 +84,28 @@ export class AudioInput {
     return () => this.listeners.delete(listener)
   }
 
+  /** Начала нот (удары по струнам) с точным временем */
+  onOnset(listener: OnsetListener): () => void {
+    this.onsetListeners.add(listener)
+    return () => this.onsetListeners.delete(listener)
+  }
+
+  /** Длина окна детектора высоты, с — кадр высоты описывает звук за это время до frame.time */
+  get frameDuration(): number {
+    return this.frameSeconds
+  }
+
+  /**
+   * Задержка ввода: от струны до ворклета. Браузер знает её не всегда —
+   * точную поправку даст калибровка (этап 8).
+   */
+  get inputLatency(): number {
+    const settings = this.stream?.getAudioTracks()[0]?.getSettings() as
+      (MediaTrackSettings & { latency?: number }) | undefined
+    const latency = settings?.latency ?? 0
+    return Number.isFinite(latency) && latency > 0 && latency < 0.5 ? latency : 0
+  }
+
   /** Запуск или переключение на другое устройство */
   async start(deviceId: string | null, range: PitchRange): Promise<void> {
     if (!AudioInput.isSupported()) {
@@ -109,8 +136,13 @@ export class AudioInput {
       numberOfOutputs: 1,
       outputChannelCount: [1],
     })
-    this.node.port.onmessage = (event: MessageEvent<AnalysisFrameMessage>) => {
-      for (const listener of this.listeners) listener(event.data)
+    this.node.port.onmessage = (event: MessageEvent<ProcessorMessage>) => {
+      const message = event.data
+      if (message.type === 'onset') {
+        for (const listener of this.onsetListeners) listener(message)
+      } else {
+        for (const listener of this.listeners) listener(message)
+      }
     }
     this.configure()
     this.source.connect(this.node)
@@ -143,11 +175,9 @@ export class AudioInput {
   private configure() {
     if (!this.node || !this.context || !this.range) return
     const { lowestMidi, highestMidi, a4 } = this.range
-    const command: ProcessorCommand = {
-      type: 'configure',
-      config: createAnalysisConfig(this.context.sampleRate, lowestMidi, highestMidi, a4),
-      gateRms: GATE_RMS,
-    }
+    const config = createAnalysisConfig(this.context.sampleRate, lowestMidi, highestMidi, a4)
+    this.frameSeconds = config.frameSize / config.sampleRate
+    const command: ProcessorCommand = { type: 'configure', config, gateRms: GATE_RMS }
     this.node.port.postMessage(command)
   }
 

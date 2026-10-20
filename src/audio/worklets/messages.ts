@@ -23,6 +23,13 @@ export interface AnalysisFrameMessage {
   time: number
 }
 
-export type ProcessorMessage = AnalysisFrameMessage
+export interface OnsetMessage {
+  type: 'onset'
+  /** Начало блока с атакой по часам AudioContext, мс */
+  time: number
+  strength: number
+}
+
+export type ProcessorMessage = AnalysisFrameMessage | OnsetMessage
 
 export const PITCH_PROCESSOR_NAME = 'pitch-processor'

@@ -74,6 +74,15 @@ export class Transport {
     return this.pausedAt
   }
 
+  /** Время трека, соответствующее моменту по часам AudioContext, с */
+  songTimeAt(contextTime: number): number {
+    return contextTime - this.origin
+  }
+
+  get isRunning(): boolean {
+    return this.state === 'playing' || this.state === 'counting'
+  }
+
   get duration(): number {
     return this.song?.duration ?? 0
   }

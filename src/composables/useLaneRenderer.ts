@@ -26,6 +26,7 @@ export function useLaneRenderer(
   const labelX = ref<number[]>([])
   const hitLineY = ref(0)
   const ready = ref(false)
+  let noteStates: Uint8Array | null = null
 
   async function create(stringCount: number) {
     renderer.value?.dispose()
@@ -55,6 +56,7 @@ export function useLaneRenderer(
       instance.setNotes(source.value.notes)
       instance.setBeats(source.value.beats)
     }
+    instance.setNoteStates(noteStates)
     instance.start(clock)
     ready.value = true
   }
@@ -83,5 +85,12 @@ export function useLaneRenderer(
     hitLineY,
     ready,
     stats: (): FrameStats | null => renderer.value?.stats() ?? null,
+    /** Состояния нот — общий массив с сессией игры; переживает пересоздание рендера */
+    setNoteStates(states: Uint8Array | null) {
+      noteStates = states
+      renderer.value?.setNoteStates(states)
+    },
+    hit: (strings: readonly number[], perfect: boolean) => renderer.value?.hit(strings, perfect),
+    resetEffects: () => renderer.value?.resetEffects(),
   }
 }

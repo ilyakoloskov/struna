@@ -1,0 +1,168 @@
+import { onBeforeUnmount, ref, shallowRef, watch, type Ref } from 'vue'
+import { audioInput } from '@/audio/audioInput'
+import { getAudioContext } from '@/audio/context'
+import { seededRandom } from '@/domain/random'
+import type { Tuning } from '@/domain/music/tunings'
+import type { FrettedNote } from '@/domain/tracks/types'
+import { outputLatencyOf, type GameClock } from '@/game/clock'
+import { PlayedNoteDetector, type PlayedNote } from '@/game/input/playedNotes'
+import { Judge, buildTargets, type Grade, type Judgment, type Target } from '@/game/judge'
+import { NOTE_HIT, NOTE_MISSED } from '@/game/noteState'
+import { buildResult, type SessionResult } from '@/game/results'
+import { EMPTY_SCORE, applyGrade, type ScoreState } from '@/game/score'
+import { useAnimationFrame } from './useAnimationFrame'
+
+export interface LastJudgment {
+  grade: Grade
+  /** Струна (индекс от низкой) — для позиции всплывающей оценки */
+  stringIndex: number
+  /** Растёт с каждой оценкой — перезапускает анимацию */
+  id: number
+}
+
+interface SessionDeps {
+  notes: Ref<readonly FrettedNote[]>
+  tuning: Ref<Tuning>
+  clock: GameClock
+  /** Идёт ли воспроизведение (сыгранное засчитывается только тогда) */
+  isRunning: () => boolean
+  /** Время трека для момента по часам AudioContext */
+  songTimeAt: (contextTime: number) => number
+  lane: {
+    setNoteStates(states: Uint8Array | null): void
+    hit(strings: readonly number[], perfect: boolean): void
+    resetEffects(): void
+  }
+  /** Автоигра для проверки без гитары: бот «играет» ноты с разбросом по времени */
+  autoplay: boolean
+}
+
+/**
+ * Игровая сессия: сыгранные ноты с входа → судейство → счёт → эффекты на дорожке.
+ * Время сыгранной ноты переводится во время трека «как слышит игрок»:
+ * минус задержка вывода (когда он услышал ноту) и минус задержка ввода (когда звук дошёл до нас).
+ */
+export function useGameSession(deps: SessionDeps) {
+  const score = ref<ScoreState>(EMPTY_SCORE)
+  const lastJudgment = shallowRef<LastJudgment | null>(null)
+  const extraNotes = ref(0)
+
+  let targets: Target[] = []
+  let judge = new Judge([])
+  let states = new Uint8Array(0)
+  let judgmentId = 0
+  let botCursor = 0
+  let botRandom = seededRandom(1)
+  let botPlan: { time: number; skip: boolean }[] = []
+
+  function reset() {
+    targets = buildTargets(deps.notes.value)
+    judge = new Judge(targets)
+    states = new Uint8Array(deps.notes.value.length)
+    deps.lane.setNoteStates(states)
+    deps.lane.resetEffects()
+    score.value = EMPTY_SCORE
+    extraNotes.value = 0
+    lastJudgment.value = null
+    // План бота: разброс ±70 мс и ~6 % пропусков — чтобы были и Perfect, и Good, и Miss
+    botRandom = seededRandom(7)
+    botPlan = targets.map((t) => ({
+      time: t.time + (botRandom() + botRandom() - 1) * 0.07,
+      skip: botRandom() < 0.06,
+    }))
+    botCursor = 0
+  }
+
+  watch(deps.notes, reset, { immediate: true })
+
+  function apply(judgment: Judgment) {
+    const target = targets[judgment.targetIndex]!
+    score.value = applyGrade(score.value, judgment.grade)
+    const state = judgment.grade === 'miss' ? NOTE_MISSED : NOTE_HIT
+    for (const index of target.noteIndices) states[index] = state
+    if (judgment.grade !== 'miss') deps.lane.hit(target.strings, judgment.grade === 'perfect')
+    lastJudgment.value = {
+      grade: judgment.grade,
+      stringIndex: target.strings[0] ?? 0,
+      id: ++judgmentId,
+    }
+  }
+
+  function play(songTime: number, midi: number) {
+    const judgment = judge.play(songTime, midi)
+    extraNotes.value = judge.extraNotes
+    if (judgment) apply(judgment)
+  }
+
+  // --- Вход с гитары ---
+
+  let detector: PlayedNoteDetector | null = null
+  let detectorFrame = 0
+
+  function ensureDetector(): PlayedNoteDetector | null {
+    const frame = audioInput.frameDuration
+    if (!frame) return null
+    if (!detector || frame !== detectorFrame) {
+      detectorFrame = frame
+      detector = new PlayedNoteDetector({ frameDuration: frame }, onPlayed)
+    }
+    return detector
+  }
+
+  function onPlayed(note: PlayedNote) {
+    if (deps.autoplay || !deps.isRunning()) return
+    const latency = outputLatencyOf(getAudioContext()) + audioInput.inputLatency
+    play(deps.songTimeAt(note.time) - latency, note.midi)
+  }
+
+  const offOnset = audioInput.onOnset((onset) => ensureDetector()?.onOnset(onset.time / 1000))
+  const offFrame = audioInput.onFrame((frame) =>
+    ensureDetector()?.onFrame({
+      time: frame.time / 1000,
+      freq: frame.freq,
+      clarity: frame.clarity,
+      rms: frame.rms,
+    }),
+  )
+
+  // --- Каждый кадр: промахи по прошедшим нотам и ходы бота ---
+
+  useAnimationFrame(() => {
+    if (!deps.isRunning()) return
+    const now = deps.clock.now()
+    if (deps.autoplay) {
+      while (botCursor < botPlan.length && botPlan[botCursor]!.time <= now) {
+        const plan = botPlan[botCursor]!
+        const target = targets[botCursor]!
+        if (!plan.skip) play(plan.time, target.midis[0]!)
+        botCursor++
+      }
+    }
+    judge.advance(now, apply)
+  })
+
+  onBeforeUnmount(() => {
+    offOnset()
+    offFrame()
+  })
+
+  function finish(meta: {
+    id: string
+    trackId: string
+    trackName: string
+    duration: number
+  }): SessionResult {
+    // Добиваем промахи до конца трека
+    judge.advance(Infinity, apply)
+    return buildResult({
+      ...meta,
+      tuning: deps.tuning.value,
+      targets,
+      grades: judge.grades,
+      score: score.value,
+      extraNotes: judge.extraNotes,
+    })
+  }
+
+  return { score, lastJudgment, extraNotes, reset, finish }
+}

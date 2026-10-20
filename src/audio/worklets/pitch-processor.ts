@@ -1,12 +1,20 @@
 // AudioWorkletProcessor: копит вход в кольцевом буфере и каждые hopSize сэмплов
-// оценивает высоту (YIN), RMS и пик. Работает в аудиопотоке — без аллокаций в process().
+// оценивает высоту (YIN), RMS и пик; на каждом блоке ищет начало ноты (onset).
+// Работает в аудиопотоке — без аллокаций в process().
 
 import { BiquadLowpass } from '../dsp/biquad'
+import { OnsetDetector } from '../dsp/onset'
 import { YinDetector } from '../dsp/yin'
-import { PITCH_PROCESSOR_NAME, type AnalysisFrameMessage, type ProcessorCommand } from './messages'
+import {
+  PITCH_PROCESSOR_NAME,
+  type AnalysisFrameMessage,
+  type OnsetMessage,
+  type ProcessorCommand,
+} from './messages'
 
 // Глобалы AudioWorkletGlobalScope (в lib.dom их нет)
 declare const currentTime: number
+declare const sampleRate: number
 declare function registerProcessor(name: string, ctor: unknown): void
 declare class AudioWorkletProcessor {
   readonly port: MessagePort
@@ -15,6 +23,8 @@ declare class AudioWorkletProcessor {
 class PitchProcessor extends AudioWorkletProcessor {
   private detector: YinDetector | null = null
   private lowpass: BiquadLowpass | null = null
+  private readonly onset = new OnsetDetector({ sampleRate })
+  private readonly onsetMessage: OnsetMessage = { type: 'onset', time: 0, strength: 0 }
   private ring = new Float32Array(0)
   private frame = new Float32Array(0)
   private writeIndex = 0
@@ -66,6 +76,14 @@ class PitchProcessor extends AudioWorkletProcessor {
         channelPeak = peak
         channel = channels[c]!
       }
+    }
+
+    // Начало ноты — по сырому сигналу: ФНЧ срезал бы щелчок медиатора
+    const strength = this.onset.process(channel, currentTime)
+    if (strength > 0) {
+      this.onsetMessage.time = currentTime * 1000
+      this.onsetMessage.strength = strength
+      this.port.postMessage(this.onsetMessage)
     }
 
     const ring = this.ring

@@ -24,7 +24,7 @@ onBeforeUnmount(() => clearInterval(timer))
 .fps {
   position: absolute;
   left: 16px;
-  bottom: 16px;
+  top: calc(var(--header-height) + 8px);
   padding: 6px 10px;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.6);
