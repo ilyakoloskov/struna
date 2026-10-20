@@ -1,0 +1,232 @@
+// Шейдеры дорожки. Все объекты лежат в плоскости дорожки (XZ), линия удара — z = 0.
+// Дальний край растворяется в фоне (uLength — длина дорожки).
+
+/** Общий кусок: затухание к дальнему краю */
+const FADE = /* glsl */ `
+  uniform float uLength;
+  float laneFade(float z) {
+    return smoothstep(-uLength, -uLength * 0.55, z);
+  }
+`
+
+// --- Полотно дорожки: фон, линии струн, края ---
+
+export const laneVertex = /* glsl */ `
+  varying vec3 vWorld;
+  void main() {
+    vec4 world = modelMatrix * vec4(position, 1.0);
+    vWorld = world.xyz;
+    gl_Position = projectionMatrix * viewMatrix * world;
+  }
+`
+
+export const laneFragment = /* glsl */ `
+  ${FADE}
+  uniform vec3 uBackground;
+  uniform vec3 uColors[7];
+  uniform float uStringCount;
+  uniform float uSpacing;
+  uniform float uHalfWidth;
+  varying vec3 vWorld;
+
+  // Линия толщиной width мировых единиц со сглаживанием по экрану
+  float line(float distance, float width) {
+    float aa = fwidth(distance);
+    return 1.0 - smoothstep(width - aa, width + aa, distance);
+  }
+
+  void main() {
+    float x = vWorld.x;
+    vec3 color = uBackground;
+    float alpha = 0.92;
+
+    for (int i = 0; i < 7; i++) {
+      if (float(i) >= uStringCount) break;
+      float sx = (float(i) - (uStringCount - 1.0) * 0.5) * uSpacing;
+      color += uColors[i] * line(abs(x - sx), 0.012) * 0.45;
+    }
+
+    // Края дорожки
+    float edge = line(abs(abs(x) - uHalfWidth), 0.012);
+    color += vec3(0.16) * edge;
+
+    // Мягкое свечение по краям (как box-shadow на макете)
+    float rim = smoothstep(uHalfWidth - 0.9, uHalfWidth, abs(x));
+    color += vec3(0.22, 0.17, 0.42) * rim * 0.12;
+
+    gl_FragColor = vec4(color, alpha * laneFade(vWorld.z));
+  }
+`
+
+// --- Инстансы: доли, хвосты, ноты, кольца. Плоский квадрат 1×1 в XY → в плоскость XZ ---
+
+const INSTANCE_VERTEX_HEAD = /* glsl */ `
+  attribute vec3 aOffset;   // центр (x, y, z)
+  attribute vec2 aSize;     // ширина по x, длина по z
+  varying vec2 vUv;
+  varying float vZ;
+  vec3 placeOnLane() {
+    return vec3(aOffset.x + position.x * aSize.x, aOffset.y, aOffset.z - position.y * aSize.y);
+  }
+`
+
+export const beatVertex = /* glsl */ `
+  ${INSTANCE_VERTEX_HEAD}
+  attribute float aStrength;
+  varying float vStrength;
+  void main() {
+    vec3 p = placeOnLane();
+    vUv = uv;
+    vZ = p.z;
+    vStrength = aStrength;
+    gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+  }
+`
+
+export const beatFragment = /* glsl */ `
+  ${FADE}
+  varying vec2 vUv;
+  varying float vZ;
+  varying float vStrength;
+  void main() {
+    gl_FragColor = vec4(vec3(1.0), vStrength * laneFade(vZ));
+  }
+`
+
+export const tailVertex = /* glsl */ `
+  ${INSTANCE_VERTEX_HEAD}
+  attribute vec3 aColor;
+  varying vec3 vColor;
+  varying vec2 vSizeWorld;
+  void main() {
+    vec3 p = placeOnLane();
+    vUv = uv;
+    vZ = p.z;
+    vColor = aColor;
+    vSizeWorld = aSize;
+    gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+  }
+`
+
+export const tailFragment = /* glsl */ `
+  ${FADE}
+  varying vec2 vUv;
+  varying float vZ;
+  varying vec3 vColor;
+  varying vec2 vSizeWorld;
+  void main() {
+    // Скруглённые концы: расстояние до осевого отрезка
+    vec2 p = (vUv - 0.5) * vSizeWorld;
+    float r = vSizeWorld.x * 0.5;
+    float d = length(vec2(p.x, max(abs(p.y) - (vSizeWorld.y * 0.5 - r), 0.0))) - r;
+    float aa = fwidth(d);
+    float shape = 1.0 - smoothstep(-aa, aa, d);
+    gl_FragColor = vec4(vColor * 1.1, 0.55 * shape * laneFade(vZ));
+  }
+`
+
+export const noteVertex = /* glsl */ `
+  ${INSTANCE_VERTEX_HEAD}
+  attribute vec3 aColor;
+  attribute vec4 aDigit;  // UV-прямоугольник цифры лада в атласе
+  varying vec3 vColor;
+  varying vec4 vDigit;
+  varying vec2 vSizeWorld;
+  void main() {
+    vec3 p = placeOnLane();
+    vUv = uv;
+    vZ = p.z;
+    vColor = aColor;
+    vDigit = aDigit;
+    vSizeWorld = aSize;
+    gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+  }
+`
+
+export const noteFragment = /* glsl */ `
+  ${FADE}
+  uniform sampler2D uDigits;
+  uniform vec3 uInk;
+  varying vec2 vUv;
+  varying float vZ;
+  varying vec3 vColor;
+  varying vec4 vDigit;
+  varying vec2 vSizeWorld;
+
+  float roundBox(vec2 p, vec2 halfSize, float r) {
+    vec2 q = abs(p) - halfSize + r;
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+  }
+
+  void main() {
+    vec2 p = (vUv - 0.5) * vSizeWorld;
+    vec2 halfSize = vSizeWorld * 0.5;
+    float radius = min(halfSize.x, halfSize.y) * 0.55;
+    float d = roundBox(p, halfSize, radius);
+    float aa = fwidth(d);
+    float body = 1.0 - smoothstep(-aa, aa, d);
+    // Светлая обводка, как на макете
+    float border = body * smoothstep(-0.035 - aa, -0.035 + aa, d);
+
+    // Цифра лада: квадратная область в центре плашки
+    vec2 digitUv = (p / vSizeWorld.y) * 1.05 + 0.5;
+    float ink = 0.0;
+    if (all(greaterThanEqual(digitUv, vec2(0.0))) && all(lessThanEqual(digitUv, vec2(1.0)))) {
+      ink = texture2D(uDigits, mix(vDigit.xy, vDigit.zw, digitUv)).a;
+    }
+
+    vec3 color = vColor * 1.35;                         // ярче порога bloom — светится
+    color = mix(color, vec3(1.0) * 1.2, border * 0.75);  // обводка
+    color = mix(color, uInk, ink);                       // тёмная цифра
+    gl_FragColor = vec4(color, body * laneFade(vZ));
+  }
+`
+
+export const ringVertex = /* glsl */ `
+  ${INSTANCE_VERTEX_HEAD}
+  attribute vec3 aColor;
+  attribute float aActive;
+  varying vec3 vColor;
+  varying float vActive;
+  void main() {
+    vec3 p = placeOnLane();
+    vUv = uv;
+    vZ = p.z;
+    vColor = aColor;
+    vActive = aActive;
+    gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+  }
+`
+
+export const ringFragment = /* glsl */ `
+  uniform float uPulse;
+  varying vec2 vUv;
+  varying vec3 vColor;
+  varying float vActive;
+  void main() {
+    float r = length(vUv - 0.5) * 2.0;   // 0 в центре, 1 на краю квадрата
+    float aa = fwidth(r);
+    float ringShape = smoothstep(0.80 - aa, 0.80 + aa, r) * (1.0 - smoothstep(0.92 - aa, 0.92 + aa, r));
+    float disc = 1.0 - smoothstep(0.92 - aa, 0.92 + aa, r);
+    // Нота на линии — кольцо заливается и вспыхивает
+    vec3 color = vColor * (1.0 + vActive * 1.6);
+    float alpha = ringShape * (0.9 + uPulse * 0.1) + disc * (0.1 + vActive * 0.9);
+    gl_FragColor = vec4(color, clamp(alpha, 0.0, 1.0));
+  }
+`
+
+export const hitLineFragment = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    float glow = 1.0 - abs(vUv.y - 0.5) * 2.0;
+    gl_FragColor = vec4(vec3(1.4), glow * glow);
+  }
+`
+
+export const simpleVertex = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`

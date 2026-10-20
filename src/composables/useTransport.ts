@@ -1,7 +1,9 @@
 import { onBeforeUnmount, ref, shallowRef } from 'vue'
+import { getAudioContext } from '@/audio/context'
 import { Transport, type TransportOptions, type TransportState } from '@/audio/playback/transport'
 import type { LoadProgress } from '@/audio/playback/instruments'
 import type { Song } from '@/domain/tracks/types'
+import { heardTime, outputLatencyOf, type GameClock } from '@/game/clock'
 import { useAnimationFrame } from './useAnimationFrame'
 
 /** Транспорт трека для экрана: реактивное состояние, позиция обновляется по кадрам отрисовки */
@@ -36,7 +38,13 @@ export function useTransport() {
     transport.dispose()
   })
 
+  // Часы для рендера: читают транспорт напрямую (без реактивности) с учётом задержки вывода звука
+  const clock: GameClock = {
+    now: () => heardTime(transport.position, outputLatencyOf(getAudioContext())),
+  }
+
   return {
+    clock,
     state,
     position,
     duration,
