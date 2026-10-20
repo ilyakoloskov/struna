@@ -7,6 +7,7 @@ import { createAnalysisConfig } from './dsp/analysisConfig'
 import {
   PITCH_PROCESSOR_NAME,
   type AnalysisFrameMessage,
+  type ChromaMessage,
   type OnsetMessage,
   type ProcessorCommand,
   type ProcessorMessage,
@@ -39,6 +40,7 @@ const GATE_RMS = 0.001
 
 type FrameListener = (frame: AnalysisFrameMessage) => void
 type OnsetListener = (onset: OnsetMessage) => void
+type ChromaListener = (chroma: ChromaMessage) => void
 
 export class AudioInput {
   private context: AudioContext | null = null
@@ -49,6 +51,7 @@ export class AudioInput {
   private range: PitchRange | null = null
   private readonly listeners = new Set<FrameListener>()
   private readonly onsetListeners = new Set<OnsetListener>()
+  private readonly chromaListeners = new Set<ChromaListener>()
   private frameSeconds = 0
 
   get isRunning(): boolean {
@@ -88,6 +91,12 @@ export class AudioInput {
   onOnset(listener: OnsetListener): () => void {
     this.onsetListeners.add(listener)
     return () => this.onsetListeners.delete(listener)
+  }
+
+  /** Хрома после каждого удара — для проверки аккордов */
+  onChroma(listener: ChromaListener): () => void {
+    this.chromaListeners.add(listener)
+    return () => this.chromaListeners.delete(listener)
   }
 
   /** Длина окна детектора высоты, с — кадр высоты описывает звук за это время до frame.time */
@@ -140,6 +149,8 @@ export class AudioInput {
       const message = event.data
       if (message.type === 'onset') {
         for (const listener of this.onsetListeners) listener(message)
+      } else if (message.type === 'chroma') {
+        for (const listener of this.chromaListeners) listener(message)
       } else {
         for (const listener of this.listeners) listener(message)
       }

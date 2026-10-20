@@ -30,6 +30,14 @@ export interface OnsetMessage {
   strength: number
 }
 
-export type ProcessorMessage = AnalysisFrameMessage | OnsetMessage
+export interface ChromaMessage {
+  type: 'chroma'
+  /** Время удара, после которого посчитана хрома, мс */
+  time: number
+  /** Энергия 12 нот (C…B), максимум = 1 */
+  chroma: number[]
+}
+
+export type ProcessorMessage = AnalysisFrameMessage | OnsetMessage | ChromaMessage
 
 export const PITCH_PROCESSOR_NAME = 'pitch-processor'

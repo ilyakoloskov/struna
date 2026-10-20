@@ -3,11 +3,13 @@
 // Работает в аудиопотоке — без аллокаций в process().
 
 import { BiquadLowpass } from '../dsp/biquad'
+import { CHROMA_SIZE, ChromaAnalyzer } from '../dsp/chroma'
 import { OnsetDetector } from '../dsp/onset'
 import { YinDetector } from '../dsp/yin'
 import {
   PITCH_PROCESSOR_NAME,
   type AnalysisFrameMessage,
+  type ChromaMessage,
   type OnsetMessage,
   type ProcessorCommand,
 } from './messages'
@@ -25,6 +27,15 @@ class PitchProcessor extends AudioWorkletProcessor {
   private lowpass: BiquadLowpass | null = null
   private readonly onset = new OnsetDetector({ sampleRate })
   private readonly onsetMessage: OnsetMessage = { type: 'onset', time: 0, strength: 0 }
+  // Хрома для проверки аккордов: сырой сигнал (ФНЧ срезал бы верх диапазона),
+  // считается один раз после каждого удара — по окну сразу после атаки
+  private readonly chroma = new ChromaAnalyzer(sampleRate)
+  private readonly rawRing = new Float32Array(CHROMA_SIZE)
+  private readonly rawFrame = new Float32Array(CHROMA_SIZE)
+  private rawIndex = 0
+  /** Сколько сэмплов осталось до расчёта хромы (−1 — не ждём) */
+  private chromaCountdown = -1
+  private chromaOnsetTime = 0
   private ring = new Float32Array(0)
   private frame = new Float32Array(0)
   private writeIndex = 0
@@ -84,6 +95,19 @@ class PitchProcessor extends AudioWorkletProcessor {
       this.onsetMessage.time = currentTime * 1000
       this.onsetMessage.strength = strength
       this.port.postMessage(this.onsetMessage)
+      // Окно хромы начинается ~10 мс после атаки
+      this.chromaCountdown = CHROMA_SIZE + Math.round(sampleRate * 0.01)
+      this.chromaOnsetTime = currentTime * 1000
+    }
+
+    const raw = this.rawRing
+    for (let i = 0; i < channel.length; i++) {
+      raw[this.rawIndex] = channel[i]!
+      this.rawIndex = this.rawIndex + 1 === CHROMA_SIZE ? 0 : this.rawIndex + 1
+    }
+    if (this.chromaCountdown >= 0) {
+      this.chromaCountdown -= channel.length
+      if (this.chromaCountdown < 0) this.postChroma()
     }
 
     const ring = this.ring
@@ -101,6 +125,20 @@ class PitchProcessor extends AudioWorkletProcessor {
       this.analyze()
     }
     return true
+  }
+
+  private postChroma() {
+    for (let i = 0; i < CHROMA_SIZE; i++) {
+      this.rawFrame[i] = this.rawRing[(this.rawIndex + i) % CHROMA_SIZE]!
+    }
+    const chroma = this.chroma.analyze(this.rawFrame)
+    // Раз на удар — небольшая аллокация допустима
+    const message: ChromaMessage = {
+      type: 'chroma',
+      time: this.chromaOnsetTime,
+      chroma: Array.from(chroma),
+    }
+    this.port.postMessage(message)
   }
 
   private analyze() {

@@ -24,6 +24,8 @@ interface PersistedSettings {
   latencyOffsetMs: number
   /** Сколько секунд вперёд видно нот на дорожке (скорость нот) */
   noteLookahead: number
+  /** Аккорды засчитываются только целиком (по хромаграмме), а не по любой ноте */
+  strictChords: boolean
 }
 
 export const LATENCY_OFFSET_LIMIT = 300
@@ -69,6 +71,8 @@ export const useSettingsStore = defineStore('settings', () => {
       : DEFAULT_LOOKAHEAD,
   )
 
+  const strictChords = ref(typeof saved.strictChords === 'boolean' ? saved.strictChords : true)
+
   const tuning = computed<Tuning>(() =>
     tuningId.value === 'custom'
       ? createCustomTuning(customMidis.value)
@@ -80,7 +84,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   watch(
-    [tuningId, customMidis, inputDeviceId, a4, latencyOffsetMs, noteLookahead],
+    [tuningId, customMidis, inputDeviceId, a4, latencyOffsetMs, noteLookahead, strictChords],
     () => {
       const data: PersistedSettings = {
         tuningId: tuningId.value,
@@ -89,6 +93,7 @@ export const useSettingsStore = defineStore('settings', () => {
         a4: a4.value,
         latencyOffsetMs: latencyOffsetMs.value,
         noteLookahead: noteLookahead.value,
+        strictChords: strictChords.value,
       }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
@@ -106,6 +111,7 @@ export const useSettingsStore = defineStore('settings', () => {
     a4,
     latencyOffsetMs,
     noteLookahead,
+    strictChords,
     tuning,
     setCustomMidis,
   }

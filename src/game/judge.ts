@@ -1,9 +1,11 @@
 import type { FrettedNote } from '@/domain/tracks/types'
+import { isChord, matchChord } from './chordMatch'
 import { ACCEPT_OCTAVE_ERRORS, CHORD_TOLERANCE, PITCH_TOLERANCE_SEMITONES, TIMING } from './config'
 
 // Судейство: сопоставление сыгранных нот с нотами трека.
-// Цель — одна нота или аккорд (одновременные ноты): аккорд засчитывается,
-// если вовремя прозвучала любая его нота. Засчитываем по высоте, а не по струне/ладу.
+// Цель — одна нота или аккорд (одновременные ноты). Засчитываем по высоте, а не по струне/ладу.
+// Аккорд: в строгом режиме — по хромаграмме (прозвучал ли именно этот аккорд),
+// иначе — если вовремя прозвучала любая его нота.
 
 export type Grade = 'perfect' | 'good' | 'miss'
 
@@ -66,12 +68,20 @@ export class Judge {
   /** Сыграно нот, не совпавших ни с одной целью */
   extraNotes = 0
 
-  constructor(readonly targets: readonly Target[]) {
+  /** Аккорды цели (строгий режим) */
+  private readonly chords: boolean[]
+
+  constructor(
+    readonly targets: readonly Target[],
+    /** Строгая проверка аккордов: аккорды судятся только по хромаграмме */
+    readonly strictChords = false,
+  ) {
     this.grades = targets.map(() => null)
+    this.chords = targets.map((t) => strictChords && isChord(t.midis))
   }
 
-  /** Сыгранная нота в момент time (время трека) → оценка, если совпала с целью */
-  play(time: number, midi: number): Judgment | null {
+  /** Ближайшая по времени нерешённая цель в окне, подходящая под условие */
+  private nearest(time: number, accepts: (target: Target, index: number) => boolean) {
     let best = -1
     let bestOffset = Infinity
     for (let i = this.cursor; i < this.targets.length; i++) {
@@ -80,19 +90,45 @@ export class Judge {
       if (this.grades[i] !== null) continue
       const offset = time - target.time
       if (Math.abs(offset) > TIMING.good) continue
-      if (!target.midis.some((m) => pitchMatches(midi, m))) continue
+      if (!accepts(target, i)) continue
       if (Math.abs(offset) < Math.abs(bestOffset)) {
         best = i
         bestOffset = offset
       }
     }
-    if (best < 0) {
-      this.extraNotes++
-      return null
-    }
-    const grade = gradeForOffset(bestOffset)
-    this.grades[best] = grade
-    return { targetIndex: best, grade, offset: bestOffset }
+    return { best, bestOffset }
+  }
+
+  private decide(index: number, offset: number): Judgment {
+    const grade = gradeForOffset(offset)
+    this.grades[index] = grade
+    return { targetIndex: index, grade, offset }
+  }
+
+  /** Сыгранная нота в момент time (время трека) → оценка, если совпала с целью */
+  play(time: number, midi: number): Judgment | null {
+    const { best, bestOffset } = this.nearest(
+      time,
+      (target, i) => !this.chords[i] && target.midis.some((m) => pitchMatches(midi, m)),
+    )
+    if (best >= 0) return this.decide(best, bestOffset)
+    // Высота от удара по аккорду, который судится по хроме, — не «лишняя нота»
+    if (this.nearest(time, (_, i) => this.chords[i]!).best < 0) this.extraNotes++
+    return null
+  }
+
+  /** Хрома после удара в момент time → оценка, если это ожидаемый аккорд (строгий режим) */
+  playChord(time: number, chroma: ArrayLike<number>): Judgment | null {
+    const { best, bestOffset } = this.nearest(
+      time,
+      (target, i) => this.chords[i]! && matchChord(chroma, target.midis).ok,
+    )
+    return best >= 0 ? this.decide(best, bestOffset) : null
+  }
+
+  /** Цель судится по хроме (строгий режим, аккорд) */
+  isChordTarget(index: number): boolean {
+    return this.chords[index] ?? false
   }
 
   /** Время трека дошло до time: всё, что уже нельзя сыграть, — Miss */

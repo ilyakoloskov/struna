@@ -14,7 +14,7 @@ import { LOOKAHEAD_RANGE, useSettingsStore } from '@/stores/settings'
 
 // Настройки: вход звука, строй, калибровка задержки, вид
 const settings = useSettingsStore()
-const { tuningId, customMidis, a4, noteLookahead } = storeToRefs(settings)
+const { tuningId, customMidis, a4, noteLookahead, strictChords } = storeToRefs(settings)
 const input = useAudioInput()
 
 const deviceOptions = computed<SelectOption<string>[]>(() => [
@@ -105,6 +105,21 @@ const speed = computed({
           Анимации, тряска и вспышки отключаются, если в системе включено «Уменьшение движения».
         </p>
       </section>
+
+      <section class="panel">
+        <h2 class="panel__title">Игра</h2>
+        <label class="switch">
+          <input v-model="strictChords" type="checkbox" />
+          <span class="switch__text">
+            <b>Строгая проверка аккордов</b>
+            <span>
+              Аккорд засчитывается, только если прозвучал целиком: по спектру проверяется, что
+              звучат именно его ноты (E мажор и E минор различаются). Выключи, если на твоей гитаре
+              аккорды засчитываются плохо, — тогда хватит любой ноты аккорда.
+            </span>
+          </span>
+        </label>
+      </section>
     </div>
   </PageContainer>
 </template>
@@ -165,6 +180,32 @@ const speed = computed({
   border-color: transparent;
   background: var(--color-text);
   color: var(--color-text-inverse);
+}
+
+.switch {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.switch input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--color-accent);
+}
+
+.switch__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.switch__text b {
+  color: var(--color-text-strong);
 }
 
 .slider {

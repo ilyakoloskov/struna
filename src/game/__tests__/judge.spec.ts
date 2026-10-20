@@ -98,3 +98,31 @@ describe('Judge', () => {
     expect(judge.finished).toBe(true)
   })
 })
+
+describe('строгая проверка аккордов', () => {
+  const chordNotes = [note(1, 40, 0), note(1, 47, 1), note(1, 52, 2), note(1, 56, 3)] // E мажор
+  const targets = buildTargets([...chordNotes, note(2, 45)])
+
+  it('аккорд не засчитывается одной нотой — нужна хрома', async () => {
+    const judge = new Judge(targets, true)
+    expect(judge.play(1.01, 47)).toBeNull()
+    expect(judge.extraNotes).toBe(0) // это звук аккорда, а не лишняя нота
+    const { expectedChroma } = await import('../chordMatch')
+    expect(judge.playChord(1.02, expectedChroma([40, 47, 52, 56]))?.grade).toBe('perfect')
+  })
+
+  it('не тот аккорд по хроме — не засчитан', async () => {
+    const judge = new Judge(targets, true)
+    const { expectedChroma } = await import('../chordMatch')
+    expect(judge.playChord(1.0, expectedChroma([40, 47, 52, 55]))).toBeNull() // Em
+  })
+
+  it('одиночные ноты в строгом режиме судятся по высоте', () => {
+    const judge = new Judge(targets, true)
+    expect(judge.play(2.0, 45)?.grade).toBe('perfect')
+  })
+
+  it('без строгого режима аккорд засчитывается любой нотой', () => {
+    expect(new Judge(targets, false).play(1.0, 56)?.grade).toBe('perfect')
+  })
+})

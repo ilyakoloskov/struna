@@ -8,6 +8,7 @@ import type { Tuning } from '@/domain/music/tunings'
 import type { FrettedNote } from '@/domain/tracks/types'
 import { outputLatencyOf, type GameClock } from '@/game/clock'
 import { PlayedNoteDetector, type PlayedNote } from '@/game/input/playedNotes'
+import { expectedChroma } from '@/game/chordMatch'
 import { Judge, buildTargets, type Grade, type Judgment, type Target } from '@/game/judge'
 import { NOTE_GHOST, NOTE_HIDDEN, NOTE_HIT, NOTE_MISSED, NOTE_PENDING } from '@/game/noteState'
 import { buildResult, type SessionResult } from '@/game/results'
@@ -52,7 +53,7 @@ interface SessionDeps {
  * В петле судятся только ноты внутри неё; у каждого прохода своя точность.
  */
 export function useGameSession(deps: SessionDeps) {
-  const { latencyOffsetMs } = storeToRefs(useSettingsStore())
+  const { latencyOffsetMs, strictChords } = storeToRefs(useSettingsStore())
   const score = ref<ScoreState>(EMPTY_SCORE)
   const lastJudgment = shallowRef<LastJudgment | null>(null)
   const extraNotes = ref(0)
@@ -79,7 +80,7 @@ export function useGameSession(deps: SessionDeps) {
   /** Новый проход: свежий судья, состояния нот, план бота */
   function beginPass() {
     targets = judgedTargets()
-    judge = new Judge(targets)
+    judge = new Judge(targets, strictChords.value)
     const loop = deps.loop.value
     deps.notes.value.forEach((note, i) => {
       if (!loop) states[i] = NOTE_PENDING
@@ -110,7 +111,7 @@ export function useGameSession(deps: SessionDeps) {
     beginPass()
   }
 
-  watch([deps.notes, deps.loop], reset, { immediate: true })
+  watch([deps.notes, deps.loop, strictChords], reset, { immediate: true })
 
   // Новый проход петли: подводим итог прошлого и начинаем заново
   watch(deps.pass, (pass, previous) => {
@@ -136,8 +137,14 @@ export function useGameSession(deps: SessionDeps) {
   }
 
   function play(songTime: number, midi: number) {
+    const extraBefore = judge.extraNotes
     const judgment = judge.play(songTime, midi)
-    extraNotes.value += judgment ? 0 : 1
+    extraNotes.value += judge.extraNotes - extraBefore
+    if (judgment) apply(judgment)
+  }
+
+  function playChord(songTime: number, chroma: ArrayLike<number>) {
+    const judgment = judge.playChord(songTime, chroma)
     if (judgment) apply(judgment)
   }
 
@@ -169,6 +176,12 @@ export function useGameSession(deps: SessionDeps) {
   }
 
   const offOnset = audioInput.onOnset((onset) => ensureDetector()?.onOnset(onset.time / 1000))
+  // Хрома после удара — для аккордов в строгом режиме
+  const offChroma = audioInput.onChroma((message) => {
+    if (deps.autoplay || !deps.isRunning() || !judge.strictChords) return
+    const songTime = deps.songTimeAt(message.time / 1000) - totalLatency() * deps.tempo.value
+    playChord(songTime, message.chroma)
+  })
   const offFrame = audioInput.onFrame((frame) =>
     ensureDetector()?.onFrame({
       time: frame.time / 1000,
@@ -187,7 +200,10 @@ export function useGameSession(deps: SessionDeps) {
       while (botCursor < botPlan.length && botPlan[botCursor]!.time <= now) {
         const plan = botPlan[botCursor]!
         const target = targets[botCursor]!
-        if (!plan.skip) play(plan.time, target.midis[0]!)
+        if (!plan.skip) {
+          if (judge.isChordTarget(botCursor)) playChord(plan.time, expectedChroma(target.midis))
+          else play(plan.time, target.midis[0]!)
+        }
         botCursor++
       }
     }
@@ -197,6 +213,7 @@ export function useGameSession(deps: SessionDeps) {
   onBeforeUnmount(() => {
     offOnset()
     offFrame()
+    offChroma()
   })
 
   function finish(meta: {
