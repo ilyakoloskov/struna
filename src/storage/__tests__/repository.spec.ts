@@ -62,6 +62,14 @@ describe('repository', () => {
     expect((await repo.getResult('r3'))?.score).toBe(300)
   })
 
+  it('практика (замедление, петля) не ставит рекорд', async () => {
+    await repo.saveResult(result('r1', 'a', 500))
+    await repo.saveResult({ ...result('r2', 'a', 900), tempo: 0.75 })
+    await repo.saveResult({ ...result('r3', 'b', 800), loop: { start: 1, end: 2 } })
+    expect(await repo.bestScores()).toEqual(new Map([['a', 500]]))
+    expect((await repo.listResults()).map((r) => r.id)).toEqual(['r1', 'r3', 'r2'])
+  })
+
   it('удаление трека удаляет и его результаты', async () => {
     await repo.saveTrack(track('a', 1))
     await repo.saveTrack(track('b', 2))

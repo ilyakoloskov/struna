@@ -1,5 +1,6 @@
 import { ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
+import { isPractice } from '@/game/progress'
 import type { SessionResult } from '@/game/results'
 import { repository, requestPersistentStorage } from '@/storage'
 
@@ -13,10 +14,7 @@ export const useResultsStore = defineStore('results', () => {
     loading ??= (async () => {
       try {
         // Пока сессий немного — держим все; на тысячах перейдём на запросы по треку
-        const best = await repository.bestScores()
-        const all: SessionResult[] = []
-        for (const trackId of best.keys()) all.push(...(await repository.resultsForTrack(trackId)))
-        sessions.value = all.sort((a, b) => a.finishedAt - b.finishedAt)
+        sessions.value = await repository.listResults()
       } finally {
         loaded.value = true
       }
@@ -34,12 +32,17 @@ export const useResultsStore = defineStore('results', () => {
     return sessions.value.find((s) => s.id === id)
   }
 
-  /** Лучший счёт по треку, не считая указанной сессии */
+  /** Рекорд трека — только попытки целиком на полном темпе; без указанной сессии */
   function bestScore(trackId: string, exceptId?: string): number | null {
     const scores = sessions.value
-      .filter((s) => s.trackId === trackId && s.id !== exceptId)
+      .filter((s) => s.trackId === trackId && s.id !== exceptId && !isPractice(s))
       .map((s) => s.score)
     return scores.length ? Math.max(...scores) : null
+  }
+
+  /** Все попытки трека по времени */
+  function forTrack(trackId: string): SessionResult[] {
+    return sessions.value.filter((s) => s.trackId === trackId)
   }
 
   /** Результаты удалённого трека убираем и из памяти */
@@ -47,5 +50,5 @@ export const useResultsStore = defineStore('results', () => {
     sessions.value = sessions.value.filter((s) => s.trackId !== trackId)
   }
 
-  return { sessions, loaded, load, add, get, bestScore, forgetTrack }
+  return { sessions, loaded, load, add, get, bestScore, forTrack, forgetTrack }
 })

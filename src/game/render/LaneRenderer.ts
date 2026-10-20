@@ -28,7 +28,7 @@ import {
   type LaneLayout,
 } from '../lane/geometry'
 import { forEachVisible, maxDuration, ringActivity } from '../lane/visibleNotes'
-import { NOTE_HIT, NOTE_MISSED } from '../noteState'
+import { NOTE_GHOST, NOTE_HIDDEN, NOTE_HIT, NOTE_MISSED } from '../noteState'
 import { createDigitTexture } from './digitTexture'
 import * as glsl from './shaders'
 
@@ -54,6 +54,8 @@ const GUIDE_LEVEL = 0.35
 const FLASH_DECAY = 0.15
 const PARTICLE_CAPACITY = 384
 const PARTICLE_GRAVITY = 9
+/** Яркость нот захода перед петлёй */
+const GHOST_LEVEL = 0.3
 /** Промах: цвет плашки смешивается с серым */
 const MISSED_TINT = 0.75
 const RING_SIZE = 0.68
@@ -296,6 +298,7 @@ export class LaneRenderer {
   private readonly visitNote = (note: FrettedNote, index: number) => {
     if (note.stringIndex < 0 || note.stringIndex >= this.layout.stringCount) return
     const state = this.noteStates?.[index] ?? 0
+    if (state === NOTE_HIDDEN) return
     const layout = this.layout
     const songTime = this.frameTime
     const speed = laneSpeed(layout)
@@ -328,7 +331,10 @@ export class LaneRenderer {
       const a = this.notesLayer.attributes
       const i = this.noteCount
       write3(a.aOffset!, i, x, 0.01, z)
-      if (state === NOTE_MISSED) {
+      if (state === NOTE_GHOST) {
+        // Заход перед петлёй — тускло и ниже порога bloom
+        write3(a.aColor!, i, color.r * GHOST_LEVEL, color.g * GHOST_LEVEL, color.b * GHOST_LEVEL)
+      } else if (state === NOTE_MISSED) {
         const grey = (color.r + color.g + color.b) / 3
         write3(
           a.aColor!,

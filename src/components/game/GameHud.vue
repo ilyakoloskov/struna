@@ -14,6 +14,8 @@ const props = defineProps<{
   duration: number
   /** Экранные x струн на линии удара (от самой низкой) */
   labelX: readonly number[]
+  /** Петля — отмечается на полосе прогресса */
+  loop?: { start: number; end: number } | null
 }>()
 
 const emit = defineEmits<{ pause: [] }>()
@@ -38,7 +40,17 @@ const progress = computed(() =>
 
       <div class="hud__progress" aria-label="Прогресс трека">
         <span>{{ formatClock(Math.max(0, position)) }}</span>
-        <div class="hud__bar"><div :style="{ width: `${progress}%` }" /></div>
+        <div class="hud__bar">
+          <div class="hud__fill" :style="{ width: `${progress}%` }" />
+          <div
+            v-if="loop && duration"
+            class="hud__loop"
+            :style="{
+              left: `${(loop.start / duration) * 100}%`,
+              width: `${((loop.end - loop.start) / duration) * 100}%`,
+            }"
+          />
+        </div>
         <span>{{ formatClock(duration) }}</span>
       </div>
 
@@ -162,17 +174,27 @@ const progress = computed(() =>
 }
 
 .hud__bar {
+  position: relative;
   flex: 1;
   height: 6px;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.1);
-  overflow: hidden;
 }
 
-.hud__bar div {
+.hud__fill {
   height: 100%;
   border-radius: 3px;
   background: var(--color-text-strong);
+}
+
+/* Петля — пунктирная рамка, как на макете */
+.hud__loop {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  border: 1px dashed #ffc65a;
+  border-radius: 4px;
+  background: rgba(255, 198, 90, 0.08);
 }
 
 .hud__pause {

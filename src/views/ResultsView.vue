@@ -1,24 +1,64 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import AccuracyTimeline from '@/components/results/AccuracyTimeline.vue'
 import GradeBadge from '@/components/results/GradeBadge.vue'
+import ProgressCard from '@/components/results/ProgressCard.vue'
 import StringAccuracy from '@/components/results/StringAccuracy.vue'
+import { formatClock } from '@/domain/time'
+import { formatLoop } from '@/game/loop'
+import { hotspots, isPractice, progressPoints, type Hotspot } from '@/game/progress'
 import { formatAccuracy, formatScore } from '@/game/score'
 import { useResultsStore } from '@/stores/results'
 
 const props = defineProps<{ sessionId: string }>()
 
 const store = useResultsStore()
+const router = useRouter()
 const result = computed(() => store.get(props.sessionId))
+const practice = computed(() => !!result.value && isPractice(result.value))
 
 const previousBest = computed(() =>
   result.value ? store.bestScore(result.value.trackId, result.value.id) : null,
 )
 const newRecord = computed(
-  () => !!result.value && result.value.score > 0 && (previousBest.value ?? -1) < result.value.score,
+  () =>
+    !!result.value &&
+    !practice.value &&
+    result.value.score > 0 &&
+    (previousBest.value ?? -1) < result.value.score,
 )
+
+const attempts = computed(() => (result.value ? store.forTrack(result.value.trackId) : []))
+const points = computed(() => progressPoints(attempts.value))
+const problemSpots = computed(() => hotspots(attempts.value.filter((s) => !s.loop)))
+
+const subtitle = computed(() => {
+  const r = result.value
+  if (!r) return ''
+  const parts = [r.tuningLabel, `темп ${Math.round((r.tempo ?? 1) * 100)} %`]
+  if (r.loop) parts.push(`петля ${formatClock(r.loop.start)}–${formatClock(r.loop.end)}`)
+  if (practice.value) parts.push('практика — в рекорд не идёт')
+  return parts.join(' · ')
+})
+
+/** Адрес игры этого трека с параметрами практики */
+function playQuery(extra: Record<string, string>) {
+  const r = result.value!
+  const exercise = r.trackId.startsWith('exercise:')
+  if (exercise) {
+    const [, key, mode, frets] = r.trackId.split(':')
+    return { name: 'play', params: { trackId: 'exercise' }, query: { key, mode, frets, ...extra } }
+  }
+  return { name: 'play', params: { trackId: r.trackId }, query: extra }
+}
+
+const slowerTempo = computed(() => Math.max(50, Math.round((result.value?.tempo ?? 1) * 100) - 25))
+
+function loopSpot(spot: Hotspot) {
+  void router.push(playQuery({ loop: formatLoop(spot), tempo: String(slowerTempo.value) }))
+}
 
 const breakdown = computed(() => {
   const r = result.value
@@ -38,7 +78,7 @@ const breakdown = computed(() => {
       <section class="summary">
         <header>
           <h1 class="summary__title">{{ result.trackName }}</h1>
-          <p class="summary__meta">{{ result.tuningLabel }} · темп 100 %</p>
+          <p class="summary__meta">{{ subtitle }}</p>
         </header>
 
         <GradeBadge :grade="result.grade" :stars="result.stars" :new-record="newRecord" />
@@ -82,13 +122,24 @@ const breakdown = computed(() => {
         <div class="actions">
           <RouterLink
             class="btn btn--primary"
-            :to="{ name: 'play', params: { trackId: result.trackId } }"
+            :to="
+              playQuery({
+                ...(result.tempo && result.tempo < 1
+                  ? { tempo: String(Math.round(result.tempo * 100)) }
+                  : {}),
+                ...(result.loop ? { loop: formatLoop(result.loop) } : {}),
+              })
+            "
           >
             Ещё раз
           </RouterLink>
-          <button type="button" class="btn btn--slow" disabled title="Темп 50–100 % — этап 8">
-            Медленнее · 75 %
-          </button>
+          <RouterLink
+            v-if="(result.tempo ?? 1) > 0.5"
+            class="btn btn--slow"
+            :to="playQuery({ tempo: String(slowerTempo) })"
+          >
+            Медленнее · {{ slowerTempo }} %
+          </RouterLink>
         </div>
       </section>
 
@@ -97,8 +148,15 @@ const breakdown = computed(() => {
           :segments="result.timeline"
           :duration="result.duration"
           :hardest="result.hardest"
+          @loop="loopSpot({ ...$event, accuracy: 0, attempts: 1 })"
         />
         <StringAccuracy :strings="result.strings" :weakest="result.weakestString" />
+        <ProgressCard
+          :points="points"
+          :hotspots="problemSpots"
+          :current-id="result.id"
+          @loop="loopSpot"
+        />
       </div>
     </div>
 

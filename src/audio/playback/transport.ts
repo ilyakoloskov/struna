@@ -1,11 +1,13 @@
 import { getAudioContext, resumeAudioContext } from '../context'
 import type { Beat, NoteEvent, Song } from '@/domain/tracks/types'
 import { createVoice, scheduleClick, type LoadProgress, type Voice } from './instruments'
+import { PlaybackClock } from './playbackClock'
 import { EventCursor, countIn } from './timeline'
 
 // Транспорт трека: упреждающее планирование по часам AudioContext
 // («A tale of two clocks»): таймер раз в 25 мс ставит в очередь всё, что прозвучит
 // в ближайшие 150 мс. Точность — по часам аудио, а не таймера, поэтому UI не сбивает ритм.
+// Темп (50–100 %) растягивает время; петля повторяет фрагмент с заходом за такт.
 
 export type TransportState = 'idle' | 'loading' | 'ready' | 'counting' | 'playing' | 'paused'
 
@@ -17,7 +19,15 @@ export interface TransportOptions {
   countIn: boolean
 }
 
+export interface TransportLoop {
+  start: number
+  end: number
+  /** Откуда начинается каждый проход (заход за такт до start) */
+  leadFrom: number
+}
+
 const TICK_MS = 25
+/** Окно планирования, реальные секунды */
 const LOOKAHEAD = 0.15
 /** Запас от «сейчас» до первой ноты, чтобы успеть поставить её в очередь */
 const START_LEAD = 0.08
@@ -38,10 +48,10 @@ export class Transport {
   private players: TrackPlayer[] = []
   private beats: EventCursor<Beat> = new EventCursor([])
   private timer: ReturnType<typeof setInterval> | null = null
-  /** Время AudioContext, соответствующее нулю трека */
-  private origin = 0
+  private clock = new PlaybackClock(1)
   private pausedAt = 0
   private loadToken = 0
+  private loopRange: TransportLoop | null = null
   private readonly listeners = new Set<Listener>()
 
   state: TransportState = 'idle'
@@ -68,15 +78,26 @@ export class Transport {
 
   /** Позиция в треке, с; во время отсчёта — отрицательная */
   get position(): number {
-    if (this.state === 'playing' || this.state === 'counting') {
-      return this.context.currentTime - this.origin
-    }
+    if (this.isRunning) return this.clock.songTime(this.context.currentTime)
     return this.pausedAt
   }
 
-  /** Время трека, соответствующее моменту по часам AudioContext, с */
+  /** Время трека для момента по часам AudioContext (без побочных эффектов — для ударов игрока) */
   songTimeAt(contextTime: number): number {
-    return contextTime - this.origin
+    return this.clock.songTimeAt(contextTime)
+  }
+
+  /** Номер прохода петли (0 — первый); обновляется вместе с position */
+  get pass(): number {
+    return this.clock.pass
+  }
+
+  get tempo(): number {
+    return this.clock.rate
+  }
+
+  get loop(): TransportLoop | null {
+    return this.loopRange
   }
 
   get isRunning(): boolean {
@@ -117,7 +138,7 @@ export class Transport {
     await Promise.allSettled(this.players.map((p) => p.voice.ready))
     if (token !== this.loadToken) return
     this.failedInstruments = failed
-    this.pausedAt = 0
+    this.pausedAt = this.loopRange?.leadFrom ?? 0
     this.setState('ready')
   }
 
@@ -131,22 +152,42 @@ export class Transport {
     this.emit()
   }
 
+  /** Темп 0.5…1; меняется только на остановленном транспорте */
+  setTempo(rate: number): void {
+    if (this.isRunning) return
+    this.clock = new PlaybackClock(Math.min(1, Math.max(0.5, rate)))
+    this.emit()
+  }
+
+  /** Петля или null; начало воспроизведения переносится на заход */
+  setLoop(loop: TransportLoop | null): void {
+    if (this.isRunning) return
+    this.loopRange = loop
+    this.clock = new PlaybackClock(this.clock.rate)
+    this.pausedAt = loop ? loop.leadFrom : 0
+    this.emit()
+  }
+
   async play(): Promise<void> {
-    if (!this.song || this.state === 'playing' || this.state === 'counting') return
+    if (!this.song || this.isRunning) return
     if (this.state === 'loading' || this.state === 'idle') return
     await resumeAudioContext()
-    if (this.pausedAt >= this.duration) this.pausedAt = 0
+    const loop = this.loopRange
+    if (loop && (this.pausedAt < loop.leadFrom || this.pausedAt >= loop.end)) {
+      this.pausedAt = loop.leadFrom
+    }
+    if (!loop && this.pausedAt >= this.duration) this.pausedAt = 0
 
     const now = this.context.currentTime + START_LEAD
     let lead = 0
     if (this.options.countIn) {
       const count = countIn(this.song)
       for (const click of count.clicks) {
-        scheduleClick(this.context, now + click.offset, click.accent, this.master)
+        scheduleClick(this.context, now + click.offset / this.clock.rate, click.accent, this.master)
       }
-      lead = count.duration
+      lead = count.duration / this.clock.rate
     }
-    this.origin = now + lead - this.pausedAt
+    this.clock.start(now + lead, this.pausedAt)
     this.seekCursors(this.pausedAt)
     this.setState(lead > 0 ? 'counting' : 'playing')
     this.timer = setInterval(() => this.tick(), TICK_MS)
@@ -154,14 +195,14 @@ export class Transport {
   }
 
   pause(): void {
-    if (this.state !== 'playing' && this.state !== 'counting') return
+    if (!this.isRunning) return
     this.pausedAt = Math.max(0, this.position)
     this.halt()
     this.setState('paused')
   }
 
   seek(time: number): void {
-    const wasPlaying = this.state === 'playing' || this.state === 'counting'
+    const wasPlaying = this.isRunning
     if (wasPlaying) this.halt()
     this.pausedAt = Math.max(0, Math.min(this.duration, time))
     if (wasPlaying) {
@@ -174,7 +215,8 @@ export class Transport {
 
   stop(): void {
     this.halt()
-    this.pausedAt = 0
+    this.clock = new PlaybackClock(this.clock.rate)
+    this.pausedAt = this.loopRange?.leadFrom ?? 0
     if (this.song) this.setState('ready')
   }
 
@@ -185,27 +227,54 @@ export class Transport {
   }
 
   private tick() {
+    const passBefore = this.clock.pass
     const position = this.position
+    if (this.clock.pass !== passBefore) this.emit()
     if (this.state === 'counting' && position >= 0) this.setState('playing')
-    if (position > this.duration + 0.3) {
+    const loop = this.loopRange
+    if (!loop && position > this.duration + 0.3) {
       this.halt()
       this.pausedAt = this.duration
       this.setState('paused')
       return
     }
 
-    const until = position + LOOKAHEAD
+    const horizon = position + LOOKAHEAD * this.clock.rate
+    if (!loop) {
+      this.schedule(horizon, Infinity)
+      return
+    }
+
+    if (!this.clock.hasPendingWrap) {
+      this.schedule(Math.min(horizon, loop.end), loop.end)
+      // Граница петли в окне планирования: ставим переход и сразу ноты следующего прохода
+      if (horizon >= loop.end) {
+        this.clock.scheduleWrap(loop.end, loop.leadFrom)
+        this.seekCursors(loop.leadFrom)
+      }
+    }
+    if (this.clock.hasPendingWrap) {
+      this.schedule(loop.leadFrom + Math.max(0, horizon - loop.end), loop.end)
+    }
+  }
+
+  /** Ставит в очередь всё, что начинается раньше until (время трека); ноты обрезаются по limit */
+  private schedule(until: number, limit: number) {
     const late = this.context.currentTime - 0.05
+    const rate = this.clock.rate
     for (const player of this.players) {
       const notes = player.cursor.take(until)
       if (player.isGuitar && !this.options.guitarAudible) continue
       for (const note of notes) {
-        const when = this.origin + note.time
-        if (when >= late) player.voice.play(note, Math.max(when, this.context.currentTime))
+        const when = this.clock.contextTime(note.time)
+        if (when < late) continue
+        const duration = Math.min(note.duration, limit - note.time) / rate
+        if (duration > 0)
+          player.voice.play(note, Math.max(when, this.context.currentTime), duration)
       }
     }
     for (const beat of this.beats.take(until)) {
-      const when = this.origin + beat.time
+      const when = this.clock.contextTime(beat.time)
       if (this.options.metronome && when >= late) {
         scheduleClick(this.context, when, beat.downbeat, this.master)
       }

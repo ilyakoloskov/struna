@@ -12,6 +12,8 @@ const props = defineProps<{
   hardest: { start: number; end: number } | null
 }>()
 
+const emit = defineEmits<{ loop: [range: { start: number; end: number }] }>()
+
 const WEAK = 0.8
 const hovered = ref<number | null>(null)
 
@@ -40,6 +42,7 @@ const tooltip = computed(() => {
       <h2 class="card__title">Точность по ходу трека</h2>
       <span v-if="hardest" class="card__note">
         Сложный участок: {{ formatClock(hardest.start) }}–{{ formatClock(hardest.end) }}
+        <button type="button" class="card__loop" @click="emit('loop', hardest)">Зациклить</button>
       </span>
     </header>
 
@@ -111,6 +114,18 @@ const tooltip = computed(() => {
   font-size: 13px;
   font-weight: 600;
   color: #ff9db0;
+}
+
+.card__loop {
+  margin-left: 10px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius-chip);
+  border: 1px solid rgba(255, 198, 90, 0.6);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffc65a;
 }
 
 .chart {

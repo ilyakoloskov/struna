@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import MobileNotice from '@/components/ui/MobileNotice.vue'
@@ -94,9 +95,9 @@ const ERROR_TEXT: Record<string, string> = {
         <CustomTuningEditor v-if="tuningId === 'custom'" v-model="customModel" />
         <LevelMeter :peak-db="input.peakDb.value" :active="isRunning" />
         <MobileNotice />
-        <button type="button" class="calibrate" disabled title="Появится на этапе 8">
+        <RouterLink class="calibrate" :to="{ name: 'settings', hash: '#calibration' }">
           Калибровка задержки
-        </button>
+        </RouterLink>
       </aside>
 
       <section class="tuner__main" aria-live="off">
@@ -185,9 +186,9 @@ const ERROR_TEXT: Record<string, string> = {
   color: var(--grade-good-text);
 }
 
-.calibrate:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.calibrate {
+  display: grid;
+  place-items: center;
 }
 
 .tuner__main {

@@ -10,6 +10,8 @@ import type { FrettedNote, NoteEvent } from './types'
 // Открытые струны руку не занимают, поэтому их выбор ничего не стоит.
 
 export interface FingeringOptions {
+  /** Самый низкий допустимый лад (кроме открытых струн, если minFret = 0) */
+  minFret: number
   maxFret: number
   /** Максимальная растяжка аккорда в ладах (между крайними прижатыми нотами) */
   maxSpan: number
@@ -20,6 +22,7 @@ export interface FingeringOptions {
 }
 
 export const DEFAULT_FINGERING_OPTIONS: FingeringOptions = {
+  minFret: 0,
   maxFret: 24,
   maxSpan: 4,
   chordTolerance: 0.03,
@@ -173,11 +176,11 @@ function moveCost(from: number, to: number, gap: number): number {
   return gap >= REST_SECONDS ? cost * COST.restDiscount : cost
 }
 
-function candidates(midi: number, tuning: Tuning, maxFret: number): Placement[] {
+function candidates(midi: number, tuning: Tuning, minFret: number, maxFret: number): Placement[] {
   const result: Placement[] = []
   tuning.strings.forEach((string, stringIndex) => {
     const fret = midi - string.midi
-    if (fret >= 0 && fret <= maxFret) result.push({ stringIndex, fret })
+    if (fret >= minFret && fret <= maxFret) result.push({ stringIndex, fret })
   })
   return result
 }
@@ -192,7 +195,7 @@ function enumerateCombos(
   tuning: Tuning,
   opts: FingeringOptions,
 ): Combo[] {
-  const options = group.map((note) => candidates(note.midi, tuning, opts.maxFret))
+  const options = group.map((note) => candidates(note.midi, tuning, opts.minFret, opts.maxFret))
   const playable = group.map((_, i) => options[i]!.length > 0)
 
   // Унисоны и лишние ноты сверх числа струн не помещаются — отбрасываем сверху

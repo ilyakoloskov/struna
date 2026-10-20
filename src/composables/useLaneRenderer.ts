@@ -2,6 +2,8 @@ import { onBeforeUnmount, onMounted, ref, shallowRef, watch, type Ref } from 'vu
 import type { GameClock } from '@/game/clock'
 import { LaneRenderer, type FrameStats } from '@/game/render/LaneRenderer'
 import type { Beat, FrettedNote } from '@/domain/tracks/types'
+import { useSettingsStore } from '@/stores/settings'
+import { storeToRefs } from 'pinia'
 
 export interface LaneSource {
   stringCount: number
@@ -22,6 +24,7 @@ export function useLaneRenderer(
   source: Ref<LaneSource | null>,
   clock: GameClock,
 ) {
+  const { noteLookahead } = storeToRefs(useSettingsStore())
   const renderer = shallowRef<LaneRenderer | null>(null)
   const labelX = ref<number[]>([])
   const hitLineY = ref(0)
@@ -43,6 +46,7 @@ export function useLaneRenderer(
         ),
         background: cssVar('--color-bg') || '#07070b',
         reducedMotion,
+        lookahead: noteLookahead.value,
       },
       (xs, y) => {
         labelX.value = xs
@@ -73,6 +77,11 @@ export function useLaneRenderer(
     }
     renderer.value.setNotes(next.notes)
     renderer.value.setBeats(next.beats)
+  })
+
+  // Скорость нот поменялась в настройках — пересоздаём дорожку
+  watch(noteLookahead, () => {
+    if (source.value) void create(source.value.stringCount)
   })
 
   onBeforeUnmount(() => {

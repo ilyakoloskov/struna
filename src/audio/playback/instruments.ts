@@ -7,8 +7,8 @@ import { DRUM_KIT, drumGroup, soundfontName } from './gmMapping'
 
 export interface Voice {
   ready: Promise<void>
-  /** Сыграть ноту в момент when по часам AudioContext */
-  play(note: NoteEvent, when: number): void
+  /** Сыграть ноту в момент when по часам AudioContext, длительностью duration реальных секунд */
+  play(note: NoteEvent, when: number, duration: number): void
   /** Оборвать все звучащие ноты */
   stopAll(): void
   dispose(): void
@@ -62,12 +62,12 @@ export function createVoice(
   })
   return {
     ready: soundfont.ready,
-    play(note, when) {
+    play(note, when, duration) {
       soundfont.start({
         note: note.midi,
         velocity: toVelocity(note.velocity),
         time: when,
-        duration: note.duration,
+        duration,
       })
     },
     stopAll: () => soundfont.stop(),

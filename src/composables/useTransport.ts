@@ -1,6 +1,11 @@
 import { onBeforeUnmount, ref, shallowRef } from 'vue'
 import { getAudioContext } from '@/audio/context'
-import { Transport, type TransportOptions, type TransportState } from '@/audio/playback/transport'
+import {
+  Transport,
+  type TransportLoop,
+  type TransportOptions,
+  type TransportState,
+} from '@/audio/playback/transport'
 import type { LoadProgress } from '@/audio/playback/instruments'
 import type { Song } from '@/domain/tracks/types'
 import { heardTime, outputLatencyOf, type GameClock } from '@/game/clock'
@@ -16,6 +21,9 @@ export function useTransport() {
   const progress = shallowRef<LoadProgress>(transport.progress)
   const failedInstruments = shallowRef<string[]>([])
   const options = shallowRef<TransportOptions>(transport.options)
+  const pass = ref(0)
+  const tempo = ref(transport.tempo)
+  const loop = shallowRef<TransportLoop | null>(transport.loop)
 
   const sync = () => {
     state.value = transport.state
@@ -24,12 +32,16 @@ export function useTransport() {
     failedInstruments.value = transport.failedInstruments
     options.value = transport.options
     position.value = transport.position
+    pass.value = transport.pass
+    tempo.value = transport.tempo
+    loop.value = transport.loop
   }
   const unsubscribe = transport.onChange(sync)
 
   useAnimationFrame(() => {
     if (transport.state === 'playing' || transport.state === 'counting') {
       position.value = transport.position
+      pass.value = transport.pass
     }
   })
 
@@ -40,7 +52,8 @@ export function useTransport() {
 
   // Часы для рендера: читают транспорт напрямую (без реактивности) с учётом задержки вывода звука
   const clock: GameClock = {
-    now: () => heardTime(transport.position, outputLatencyOf(getAudioContext())),
+    // Задержка — в реальных секундах; в секунды трека переводим с учётом темпа
+    now: () => heardTime(transport.position, outputLatencyOf(getAudioContext()) * transport.tempo),
   }
 
   return {
@@ -63,5 +76,11 @@ export function useTransport() {
     stop: () => transport.stop(),
     seek: (time: number) => transport.seek(time),
     setOptions: (partial: Partial<TransportOptions>) => transport.setOptions(partial),
+    /** Номер прохода петли (0 — первый) */
+    pass,
+    tempo,
+    loop,
+    setTempo: (rate: number) => transport.setTempo(rate),
+    setLoop: (value: TransportLoop | null) => transport.setLoop(value),
   }
 }

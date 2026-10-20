@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import FretboardDiagram from '@/components/theory/FretboardDiagram.vue'
 import LiveToggle from '@/components/theory/LiveToggle.vue'
 import NowPlayingCard from '@/components/theory/NowPlayingCard.vue'
+import ScaleExercise from '@/components/theory/ScaleExercise.vue'
 import ScaleSummary from '@/components/theory/ScaleSummary.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import SelectField from '@/components/ui/SelectField.vue'
@@ -142,6 +143,8 @@ const livePositions = computed(() =>
       <li><i class="legend__dot legend__dot--other" />Ступень гаммы</li>
       <li><i class="legend__dot legend__dot--live" />Звучит сейчас</li>
     </ul>
+
+    <ScaleExercise :tonic="theory.tonic" :scale-id="scaleId" :range="fretRange" />
 
     <div class="bottom">
       <ScaleSummary

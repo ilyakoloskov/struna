@@ -39,13 +39,19 @@ export function createRepository(db: StrunaDatabase) {
       return db.results.where('trackId').equals(trackId).sortBy('finishedAt')
     },
 
-    /** Лучший счёт по каждому треку */
+    /** Лучший счёт по каждому треку (практика с замедлением или петлёй не считается) */
     async bestScores(): Promise<Map<string, number>> {
       const best = new Map<string, number>()
       await db.results.each((r) => {
-        if ((best.get(r.trackId) ?? -1) < r.score) best.set(r.trackId, r.score)
+        const practice = (r.tempo ?? 1) < 1 || !!r.loop
+        if (!practice && (best.get(r.trackId) ?? -1) < r.score) best.set(r.trackId, r.score)
       })
       return best
+    },
+
+    /** Все результаты по времени */
+    async listResults(): Promise<SessionResult[]> {
+      return db.results.orderBy('finishedAt').toArray()
     },
   }
 }

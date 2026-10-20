@@ -3,3 +3,7 @@
 export const NOTE_PENDING = 0
 export const NOTE_HIT = 1
 export const NOTE_MISSED = 2
+/** Нота захода перед петлёй: видна тускло, не судится */
+export const NOTE_GHOST = 3
+/** Нота за пределами петли: не рисуется */
+export const NOTE_HIDDEN = 4

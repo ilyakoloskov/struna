@@ -1,5 +1,6 @@
 import type { Tuning } from '@/domain/music/tunings'
 import type { LetterGrade } from './config'
+import type { LoopRange } from './loop'
 import type { Grade, Target } from './judge'
 import { accuracyOf, letterGrade, starsFor, type ScoreState } from './score'
 
@@ -55,6 +56,10 @@ export interface SessionResult {
   hardest: { start: number; end: number } | null
   /** Струна с наибольшей долей промахов */
   weakestString: number | null
+  /** Темп попытки 0.5…1 (у записей до этапа 8 поля нет — значит 1) */
+  tempo?: number
+  /** Петля попытки; попытки с петлёй или замедлением — практика, в рекорд не идут */
+  loop?: LoopRange | null
 }
 
 interface Tally {
@@ -142,6 +147,8 @@ export function buildResult(input: {
   grades: readonly (Grade | null)[]
   score: ScoreState
   extraNotes: number
+  tempo?: number
+  loop?: LoopRange | null
 }): SessionResult {
   // Не сыгранные до конца цели (вышли раньше) считаем промахами
   const misses = input.grades.filter((g) => g === null).length
@@ -171,5 +178,7 @@ export function buildResult(input: {
     strings,
     hardest: findHardest(timeline),
     weakestString: weakestString(strings),
+    tempo: input.tempo ?? 1,
+    loop: input.loop ?? null,
   }
 }

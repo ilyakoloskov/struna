@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AccuracyPanel from '@/components/game/AccuracyPanel.vue'
@@ -9,76 +9,48 @@ import GameOverlay from '@/components/game/GameOverlay.vue'
 import InputPanel from '@/components/game/InputPanel.vue'
 import JudgmentPopup from '@/components/game/JudgmentPopup.vue'
 import ScorePanel from '@/components/game/ScorePanel.vue'
+import MobileNotice from '@/components/ui/MobileNotice.vue'
 import { audioInput } from '@/audio/audioInput'
-import { getAudioContext } from '@/audio/context'
 import { useAnimationFrame } from '@/composables/useAnimationFrame'
 import { useAudioInput } from '@/composables/useAudioInput'
 import { useGameSession } from '@/composables/useGameSession'
 import { useLaneRenderer, type LaneSource } from '@/composables/useLaneRenderer'
+import { usePlaySource } from '@/composables/usePlaySource'
 import { useTransport } from '@/composables/useTransport'
 import { useWakeLock } from '@/composables/useWakeLock'
-import MobileNotice from '@/components/ui/MobileNotice.vue'
-import { createDemoSong } from '@/domain/tracks/demoSong'
-import { assignFingering } from '@/domain/tracks/fingering'
-import type { Beat, Song } from '@/domain/tracks/types'
-import { FreeClock, outputLatencyOf } from '@/game/clock'
-import { TEST_BPM, createTestPattern, testPatternDuration } from '@/game/lane/testPattern'
-import { accuracyOf } from '@/game/score'
-import { guitarTrackOf, useLibraryStore } from '@/stores/library'
+import { formatClock } from '@/domain/time'
+import { FreeClock } from '@/game/clock'
+import { testPatternDuration } from '@/game/lane/testPattern'
+import { formatLoop, leadInStart, parseLoop, parseTempo, snapLoop } from '@/game/loop'
+import { accuracyOf, formatAccuracy } from '@/game/score'
 import { useResultsStore } from '@/stores/results'
 import { useSettingsStore } from '@/stores/settings'
 
-// Экран игры (полноэкранный). /play/test — тестовые ноты без звука,
-// /play/demo — демо-трек, /play/:id — трек из библиотеки.
-// ?autoplay — бот играет сам (проверка без гитары), ?fps — счётчик кадров.
+// Экран игры (полноэкранный). Что играем — см. usePlaySource.
+// ?tempo=75 — темп, ?loop=a-b — петля (секунды трека), ?autoplay — бот, ?fps — счётчик кадров.
 const props = defineProps<{ trackId: string }>()
 
 const route = useRoute()
 const router = useRouter()
 const { tuning } = storeToRefs(useSettingsStore())
-const library = useLibraryStore()
 const results = useResultsStore()
 const showFps = computed(() => 'fps' in route.query)
 const autoplay = 'autoplay' in route.query
 
-const isTest = computed(() => props.trackId === 'test')
-
-const song = computed<Song | null>(() => {
-  if (isTest.value) return null
-  if (props.trackId === 'demo') return createDemoSong()
-  return library.find(props.trackId)?.song ?? null
-})
-
-const guitarNotes = computed(() => {
-  if (!song.value) return []
-  const libraryTrack = library.find(props.trackId)
-  const guitar = libraryTrack
-    ? guitarTrackOf(libraryTrack)
-    : song.value.tracks.find((t) => t.instrument.family === 'guitar')
-  return guitar ? guitar.notes : []
-})
-
-const testBeats: Beat[] = Array.from(
-  { length: (testPatternDuration() * TEST_BPM) / 60 },
-  (_, i) => ({ time: (i * 60) / TEST_BPM, downbeat: i % 4 === 0 }),
-)
-
-const source = computed<LaneSource | null>(() => {
-  const stringCount = tuning.value.strings.length
-  if (isTest.value) {
-    return { stringCount, notes: createTestPattern(stringCount), beats: testBeats }
-  }
-  if (!song.value) return null
-  return {
-    stringCount,
-    notes: assignFingering(guitarNotes.value, tuning.value),
-    beats: song.value.beats,
-  }
-})
+const { kind, source, pending } = usePlaySource(toRef(props, 'trackId'))
+const isTest = computed(() => kind.value === 'test')
+const song = computed(() => source.value?.song ?? null)
 const chartNotes = computed(() => source.value?.notes ?? [])
-
-// Библиотека грузится из IndexedDB — «не найден» говорим только после загрузки
-const notFound = computed(() => !isTest.value && library.loaded && !song.value)
+const laneSource = computed<LaneSource | null>(() =>
+  source.value
+    ? {
+        stringCount: tuning.value.strings.length,
+        notes: source.value.notes,
+        beats: source.value.beats,
+      }
+    : null,
+)
+const notFound = computed(() => !pending.value && !source.value)
 
 // --- Часы: тестовый режим — свои, трек — по транспорту (часы AudioContext) ---
 
@@ -87,7 +59,61 @@ const freeClock = new FreeClock(testPatternDuration())
 const clock = { now: () => (isTest.value ? freeClock.now() : transport.clock.now()) }
 
 const canvas = ref<HTMLCanvasElement | null>(null)
-const lane = useLaneRenderer(canvas, source, clock)
+const lane = useLaneRenderer(canvas, laneSource, clock)
+
+// --- Темп и петля из адреса ---
+
+const first = (value: unknown) => (Array.isArray(value) ? value[0] : value) as string | undefined
+const tempo = computed(() => (isTest.value ? 1 : parseTempo(first(route.query.tempo))))
+const loop = computed(() => {
+  const s = song.value
+  if (!s) return null
+  const range = parseLoop(first(route.query.loop), s.duration)
+  if (!range) return null
+  const snapped = snapLoop(s.beats, range, s.duration)
+  return { ...snapped, leadFrom: leadInStart(s.beats, snapped.start) }
+})
+const isPractice = computed(() => tempo.value < 1 || !!loop.value)
+
+watch(
+  [tempo, loop],
+  () => {
+    transport.setTempo(tempo.value)
+    transport.setLoop(loop.value)
+  },
+  { immediate: true },
+)
+
+function updateQuery(patch: Record<string, string | undefined>) {
+  const query = { ...route.query, ...patch }
+  for (const [k, v] of Object.entries(patch)) if (v === undefined) delete query[k]
+  void router.replace({ query })
+}
+
+function setTempo(percent: number) {
+  updateQuery({ tempo: percent === 100 ? undefined : String(percent) })
+}
+
+/** Петля на 4 такта вокруг текущего места */
+function loopHere() {
+  const s = song.value
+  if (!s) return
+  const bars = s.beats.filter((b) => b.downbeat).map((b) => b.time)
+  const position = Math.max(0, transport.position.value)
+  // Такт, где стоим, минус один — чтобы место ошибки оказалось внутри петли
+  let current = 0
+  bars.forEach((t, i) => {
+    if (t <= position) current = i
+  })
+  const index = Math.max(0, current - 1)
+  const start = bars[index] ?? 0
+  const end = bars[index + 4] ?? s.duration
+  updateQuery({ loop: formatLoop({ start, end }) })
+}
+
+function clearLoop() {
+  updateQuery({ loop: undefined })
+}
 
 // --- Вход с гитары и сессия ---
 
@@ -100,13 +126,16 @@ const session = useGameSession({
   clock,
   isRunning: () => (isTest.value ? testRunning.value : transport.state.value === 'playing'),
   songTimeAt: (contextTime) => (isTest.value ? freeClock.now() : transport.songTimeAt(contextTime)),
+  tempo,
+  loop,
+  pass: transport.pass,
   lane,
   autoplay,
 })
 
 const score = session.score
 const accuracy = computed(() => accuracyOf(score.value))
-const best = computed(() => results.bestScore(props.trackId))
+const best = computed(() => (source.value ? results.bestScore(source.value.trackId) : null))
 const deviceLabel = computed(() => {
   const id = audioInput.activeDeviceId
   return input.devices.value.find((d) => d.id === id)?.label ?? 'Вход по умолчанию'
@@ -114,7 +143,7 @@ const deviceLabel = computed(() => {
 const latencyMs = computed(() => {
   // Пересчитывается при смене статуса входа
   void input.status.value
-  return Math.round((outputLatencyOf(getAudioContext()) + audioInput.inputLatency) * 1000)
+  return Math.round(session.totalLatency() * 1000)
 })
 
 // Всплывающая оценка — над линией удара у своей струны
@@ -145,9 +174,9 @@ const duration = computed(() =>
 const phase = computed<Phase>(() => {
   if (isTest.value) return testRunning.value ? 'playing' : 'paused'
   const state = transport.state.value
-  if (!library.loaded || state === 'idle' || state === 'loading') return 'loading'
+  if (pending.value || state === 'idle' || state === 'loading') return 'loading'
   if (state === 'counting' || state === 'playing') return 'playing'
-  if (state === 'paused' && position.value >= duration.value - 0.05) return 'ended'
+  if (state === 'paused' && !loop.value && position.value >= duration.value - 0.05) return 'ended'
   if (state === 'paused') return 'paused'
   return 'ready'
 })
@@ -163,30 +192,40 @@ const loadPercent = computed(() => {
 watch(
   song,
   (next) => {
-    if (!next) return
-    const libraryTrack = library.find(props.trackId)
+    if (!next || !source.value) return
     transport.setOptions({
-      guitarTrackIndex: libraryTrack?.guitarTrackIndex ?? 0,
+      guitarTrackIndex: source.value.guitarTrackIndex,
       // Гитарную партию играет игрок; в автоигре — слышно, чтобы было с чем сверять
       guitarAudible: autoplay,
       countIn: true,
+      // В упражнении аккомпанемента нет — нужен метроном
+      metronome: kind.value === 'exercise',
     })
-    void transport.load(next)
+    void transport.load(next).then(() => {
+      transport.setTempo(tempo.value)
+      transport.setLoop(loop.value)
+    })
   },
   { immediate: true },
 )
 
-// Трек доигран — считаем результат и открываем экран результатов
-watch(phase, (next) => {
-  if (next !== 'ended' || !song.value) return
+/** Сохранить результат и открыть экран результатов */
+function finish() {
+  if (!song.value || !source.value) return
+  transport.pause()
   const result = session.finish({
     id: crypto.randomUUID(),
-    trackId: props.trackId,
+    trackId: source.value.trackId,
     trackName: song.value.name,
     duration: duration.value,
   })
-  results.add(result)
+  void results.add(result)
   void router.replace({ name: 'results', params: { sessionId: result.id } })
+}
+
+// Трек доигран (без петли) — результат
+watch(phase, (next) => {
+  if (next === 'ended') finish()
 })
 
 function play() {
@@ -248,17 +287,34 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', onVisibility)
 })
 
+const TEMPO_STEPS = [50, 60, 70, 75, 80, 90, 100]
+
 const title = computed(() => (isTest.value ? 'Тестовые ноты' : (song.value?.name ?? '')))
 const subtitle = computed(() => {
-  const base = isTest.value ? 'без звука · проверка дорожки' : `${song.value?.bpm ?? ''} bpm`
-  return autoplay ? `${base} · автоигра` : base
+  if (isTest.value) return 'без звука · проверка дорожки'
+  const parts = [`${song.value?.bpm ?? ''} bpm`]
+  if (kind.value === 'exercise') parts.push('упражнение')
+  if (isPractice.value) parts.push('практика')
+  if (autoplay) parts.push('автоигра')
+  return parts.join(' · ')
 })
 
 const inputHint = computed(() => {
   if (autoplay) return 'Автоигра: бот сыграет сам, гитара не нужна.'
-  if (input.status.value === 'running')
+  if (input.status.value === 'running') {
     return 'Гитара подключена. Нажми «Начать» или пробел — будет отсчёт такта.'
+  }
   return 'Гитара не подключена — ноты не будут засчитываться.'
+})
+
+const passInfo = computed(() => {
+  if (!loop.value) return null
+  const done = session.passes.value
+  return {
+    pass: transport.pass.value + 1,
+    last: done.at(-1) ?? null,
+    best: done.length ? Math.max(...done) : null,
+  }
 })
 
 function exit() {
@@ -280,6 +336,7 @@ function exit() {
       :position="position"
       :duration="duration"
       :label-x="lane.labelX.value"
+      :loop="loop"
       @pause="pause"
     >
       <template #left>
@@ -291,8 +348,14 @@ function exit() {
           :perfect="score.perfect"
           :good="score.good"
           :miss="score.miss"
-          :best="best"
+          :best="isPractice ? null : best"
         />
+        <div v-if="passInfo" class="passes">
+          <span class="caps-label">Повтор {{ passInfo.pass }}</span>
+          <span v-if="passInfo.last !== null && passInfo.best !== null">
+            прошлый {{ formatAccuracy(passInfo.last) }} · лучший {{ formatAccuracy(passInfo.best) }}
+          </span>
+        </div>
       </template>
       <template #bottom-left>
         <InputPanel
@@ -303,8 +366,11 @@ function exit() {
       </template>
       <template #bottom-right>
         <div class="status">
-          <span>Темп 100 %</span>
+          <span>Темп {{ Math.round(tempo * 100) }} %</span>
           <span>Задержка {{ latencyMs }} мс</span>
+          <span v-if="loop" class="status__loop">
+            Петля {{ formatClock(loop.start) }}–{{ formatClock(loop.end) }}
+          </span>
         </div>
       </template>
       <JudgmentPopup v-if="popup" :key="popup.id" :grade="popup.grade" :x="popup.x" :y="popup.y" />
@@ -313,7 +379,7 @@ function exit() {
     <GameOverlay
       v-if="notFound"
       title="Трек не найден"
-      text="Библиотека пока живёт в памяти и очищается при перезагрузке страницы. Загрузи трек заново или сыграй демо."
+      text="Возможно, трек удалён из библиотеки. Загрузи его заново или сыграй демо."
     >
       <RouterLink class="btn btn--primary" :to="{ name: 'library' }">В библиотеку</RouterLink>
       <RouterLink class="btn" :to="{ name: 'play', params: { trackId: 'demo' } }">
@@ -344,33 +410,63 @@ function exit() {
 
     <GameOverlay v-else-if="phase === 'paused'" title="Пауза">
       <button type="button" class="btn btn--primary" @click="play">Продолжить</button>
+      <button v-if="loop && !isTest" type="button" class="btn" @click="finish">
+        Закончить практику
+      </button>
       <button type="button" class="btn" @click="restart">Сначала</button>
       <button type="button" class="btn" @click="exit">Выйти в библиотеку</button>
       <template v-if="!isTest" #options>
-        <button
-          type="button"
-          class="chip"
-          :class="{ 'chip--on': transport.options.value.guitarAudible }"
-          @click="transport.setOptions({ guitarAudible: !transport.options.value.guitarAudible })"
-        >
-          Гитарная партия
-        </button>
-        <button
-          type="button"
-          class="chip"
-          :class="{ 'chip--on': transport.options.value.metronome }"
-          @click="transport.setOptions({ metronome: !transport.options.value.metronome })"
-        >
-          Метроном
-        </button>
-        <button
-          type="button"
-          class="chip"
-          :class="{ 'chip--on': transport.options.value.countIn }"
-          @click="transport.setOptions({ countIn: !transport.options.value.countIn })"
-        >
-          Отсчёт
-        </button>
+        <div class="practice">
+          <span class="caps-label">Темп</span>
+          <div class="practice__row">
+            <button
+              v-for="step in TEMPO_STEPS"
+              :key="step"
+              type="button"
+              class="chip"
+              :class="{ 'chip--on': Math.round(tempo * 100) === step }"
+              @click="setTempo(step)"
+            >
+              {{ step }} %
+            </button>
+          </div>
+          <span class="caps-label">Петля</span>
+          <div class="practice__row">
+            <button type="button" class="chip" @click="loopHere">
+              Зациклить это место · 4 такта
+            </button>
+            <button v-if="loop" type="button" class="chip" @click="clearLoop">Убрать петлю</button>
+          </div>
+          <span class="caps-label">Звук</span>
+          <div class="practice__row">
+            <button
+              type="button"
+              class="chip"
+              :class="{ 'chip--on': transport.options.value.guitarAudible }"
+              @click="
+                transport.setOptions({ guitarAudible: !transport.options.value.guitarAudible })
+              "
+            >
+              Гитарная партия
+            </button>
+            <button
+              type="button"
+              class="chip"
+              :class="{ 'chip--on': transport.options.value.metronome }"
+              @click="transport.setOptions({ metronome: !transport.options.value.metronome })"
+            >
+              Метроном
+            </button>
+            <button
+              type="button"
+              class="chip"
+              :class="{ 'chip--on': transport.options.value.countIn }"
+              @click="transport.setOptions({ countIn: !transport.options.value.countIn })"
+            >
+              Отсчёт
+            </button>
+          </div>
+        </div>
       </template>
     </GameOverlay>
 
@@ -405,5 +501,39 @@ function exit() {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text-soft);
+}
+
+.status__loop {
+  color: #ffc65a;
+}
+
+.passes {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-text-soft);
+}
+
+.practice {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+}
+
+.practice .caps-label {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.practice__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 </style>
