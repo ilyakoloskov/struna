@@ -125,33 +125,45 @@ export const tailFragment = /* glsl */ `
   }
 `
 
+// Нота стоит на дорожке, наклонённая к камере (uUp): нижняя кромка — момент ноты,
+// плашка поднимается вверх, а не лежит плашмя — так её лицевая сторона и надписи видны крупно.
+const STANDING_HEAD = /* glsl */ `
+  uniform vec3 uUp;
+  vec3 standUp(vec3 base, vec2 size, float lift) {
+    return base + vec3(position.x * size.x, 0.0, 0.0) + uUp * ((position.y + 0.5) * size.y + lift);
+  }
+`
+
 export const noteVertex = /* glsl */ `
   ${INSTANCE_VERTEX_HEAD}
+  ${STANDING_HEAD}
   attribute vec3 aColor;
-  attribute vec4 aDigit;  // UV-прямоугольник цифры лада в атласе
+  attribute float aShape;  // 0 — плашка, 1 — ромб (флажолет), 2 — глушёная (×)
+  attribute float aMute;   // 1 — палм-мьют: тёмная полоса по низу
   varying vec3 vColor;
-  varying vec4 vDigit;
   varying vec2 vSizeWorld;
+  varying float vShape;
+  varying float vMute;
   void main() {
-    vec3 p = placeOnLane();
+    vec3 p = standUp(aOffset, aSize, 0.0);
     vUv = uv;
-    vZ = p.z;
+    vZ = aOffset.z;
     vColor = aColor;
-    vDigit = aDigit;
     vSizeWorld = aSize;
+    vShape = aShape;
+    vMute = aMute;
     gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
   }
 `
 
 export const noteFragment = /* glsl */ `
   ${FADE}
-  uniform sampler2D uDigits;
-  uniform vec3 uInk;
   varying vec2 vUv;
   varying float vZ;
   varying vec3 vColor;
-  varying vec4 vDigit;
   varying vec2 vSizeWorld;
+  varying float vShape;
+  varying float vMute;
 
   float roundBox(vec2 p, vec2 halfSize, float r) {
     vec2 q = abs(p) - halfSize + r;
@@ -161,24 +173,68 @@ export const noteFragment = /* glsl */ `
   void main() {
     vec2 p = (vUv - 0.5) * vSizeWorld;
     vec2 halfSize = vSizeWorld * 0.5;
-    float radius = min(halfSize.x, halfSize.y) * 0.55;
-    float d = roundBox(p, halfSize, radius);
+    float d;
+    if (vShape > 0.5 && vShape < 1.5) {
+      // Ромб: |x|/a + |y|/b = 1, приближённое расстояние
+      vec2 q = abs(p) / halfSize;
+      d = (q.x + q.y - 1.0) * min(halfSize.x, halfSize.y) * 0.7;
+    } else {
+      float radius = min(halfSize.x, halfSize.y) * 0.45;
+      d = roundBox(p, halfSize, radius);
+    }
     float aa = fwidth(d);
     float body = 1.0 - smoothstep(-aa, aa, d);
     // Светлая обводка, как на макете
     float border = body * smoothstep(-0.035 - aa, -0.035 + aa, d);
 
-    // Цифра лада: квадратная область в центре плашки
-    vec2 digitUv = (p / vSizeWorld.y) * 1.05 + 0.5;
-    float ink = 0.0;
-    if (all(greaterThanEqual(digitUv, vec2(0.0))) && all(lessThanEqual(digitUv, vec2(1.0)))) {
-      ink = texture2D(uDigits, mix(vDigit.xy, vDigit.zw, digitUv)).a;
-    }
-
-    vec3 color = vColor * 1.35;                         // ярче порога bloom — светится
+    vec3 color = vColor * 1.35;                          // ярче порога bloom — светится
+    // Глушёная нота — тёмная плашка с цветной обводкой
+    if (vShape > 1.5) color = vColor * 0.25;
+    // Лёгкий градиент сверху вниз — объём
+    color *= 0.85 + 0.3 * vUv.y;
+    // Палм-мьют: тёмная полоса по нижней кромке
+    float stripe = vMute * (1.0 - smoothstep(0.2 - 0.02, 0.2 + 0.02, vUv.y));
+    color = mix(color, vec3(0.04), stripe * 0.85);
     color = mix(color, vec3(1.0) * 1.2, border * 0.75);  // обводка
-    color = mix(color, uInk, ink);                       // тёмная цифра
     gl_FragColor = vec4(color, body * laneFade(vZ));
+  }
+`
+
+// --- Надписи: номера ладов и знаки приёмов. Рисуются отдельным проходом после bloom,
+// поэтому белые и чёткие: свечение их не размывает. ---
+
+export const labelVertex = /* glsl */ `
+  ${INSTANCE_VERTEX_HEAD}
+  ${STANDING_HEAD}
+  attribute float aLift;   // подъём низа надписи над дорожкой (вдоль uUp)
+  attribute vec4 aGlyph;   // UV-прямоугольник глифа в атласе
+  attribute float aAlpha;
+  varying vec4 vGlyph;
+  varying float vAlpha;
+  void main() {
+    vec3 p = standUp(aOffset, aSize, aLift);
+    vUv = uv;
+    vZ = aOffset.z;
+    vGlyph = aGlyph;
+    vAlpha = aAlpha;
+    gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+  }
+`
+
+export const labelFragment = /* glsl */ `
+  ${FADE}
+  uniform sampler2D uGlyphs;
+  varying vec2 vUv;
+  varying float vZ;
+  varying vec4 vGlyph;
+  varying float vAlpha;
+  void main() {
+    vec4 texel = texture2D(uGlyphs, mix(vGlyph.xy, vGlyph.zw, vUv));
+    // Атлас: зелёный — сам глиф, альфа — глиф с обводкой
+    vec3 color = mix(vec3(0.03, 0.03, 0.06), vec3(1.0), texel.g);
+    float alpha = texel.a * vAlpha * laneFade(vZ);
+    if (alpha < 0.01) discard;
+    gl_FragColor = vec4(color, alpha);
   }
 `
 

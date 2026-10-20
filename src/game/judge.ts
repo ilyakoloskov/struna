@@ -1,4 +1,5 @@
 import type { FrettedNote } from '@/domain/tracks/types'
+import { pitchRange, type PitchRange } from '@/domain/tracks/technique'
 import { isChord, matchChord } from './chordMatch'
 import { ACCEPT_OCTAVE_ERRORS, CHORD_TOLERANCE, PITCH_TOLERANCE_SEMITONES, TIMING } from './config'
 
@@ -6,12 +7,19 @@ import { ACCEPT_OCTAVE_ERRORS, CHORD_TOLERANCE, PITCH_TOLERANCE_SEMITONES, TIMIN
 // Цель — одна нота или аккорд (одновременные ноты). Засчитываем по высоте, а не по струне/ладу.
 // Аккорд: в строгом режиме — по хромаграмме (прозвучал ли именно этот аккорд),
 // иначе — если вовремя прозвучала любая его нота.
+// Приёмы: у бенда и слайда в ноту засчитывается диапазон высот (звучит начало ноты),
+// глухие ноты — только удар, без высоты; цель из одних глухих нот засчитывается любым ударом.
 
 export type Grade = 'perfect' | 'good' | 'miss'
 
 export interface Target {
   time: number
+  /** Высоты нот с высотой (без глухих) */
   midis: readonly number[]
+  /** Засчитываемые диапазоны высот — по одному на каждую из midis */
+  ranges: readonly PitchRange[]
+  /** Только глухие ноты: засчитывается любой удар */
+  percussive: boolean
   /** Струны нот цели (для статистики по струнам) */
   strings: readonly number[]
   /** Индексы нот в исходном массиве (для эффектов на дорожке) */
@@ -27,30 +35,53 @@ export interface Judgment {
 
 /** Цели из нот партии: одновременные ноты собираются в аккорд */
 export function buildTargets(notes: readonly FrettedNote[]): Target[] {
-  const targets: { time: number; midis: number[]; strings: number[]; noteIndices: number[] }[] = []
+  const targets: {
+    time: number
+    midis: number[]
+    ranges: PitchRange[]
+    percussive: boolean
+    strings: number[]
+    noteIndices: number[]
+  }[] = []
   notes.forEach((note, index) => {
     if (note.stringIndex < 0) return
-    const last = targets.at(-1)
-    if (last && note.time - last.time <= CHORD_TOLERANCE) {
-      last.midis.push(note.midi)
-      last.strings.push(note.stringIndex)
-      last.noteIndices.push(index)
-    } else {
-      targets.push({
+    let target = targets.at(-1)
+    if (!target || note.time - target.time > CHORD_TOLERANCE) {
+      target = {
         time: note.time,
-        midis: [note.midi],
-        strings: [note.stringIndex],
-        noteIndices: [index],
-      })
+        midis: [],
+        ranges: [],
+        percussive: true,
+        strings: [],
+        noteIndices: [],
+      }
+      targets.push(target)
     }
+    if (!note.technique?.dead) {
+      target.midis.push(note.midi)
+      target.ranges.push(pitchRange(note.midi, note.technique))
+      target.percussive = false
+    }
+    target.strings.push(note.stringIndex)
+    target.noteIndices.push(index)
   })
   return targets
 }
 
+/** Сыгранная высота попадает в диапазон (с допуском и, если разрешено, с ошибкой на октаву) */
+export function pitchInRange(played: number, range: PitchRange): boolean {
+  if (Number.isNaN(played)) return false
+  const distance = (m: number) =>
+    m < range.low ? range.low - m : m > range.high ? m - range.high : 0
+  if (distance(played) <= PITCH_TOLERANCE_SEMITONES) return true
+  return (
+    ACCEPT_OCTAVE_ERRORS &&
+    Math.min(distance(played - 12), distance(played + 12)) <= PITCH_TOLERANCE_SEMITONES
+  )
+}
+
 export function pitchMatches(played: number, expected: number): boolean {
-  const d = played - expected
-  if (Math.abs(d) <= PITCH_TOLERANCE_SEMITONES) return true
-  return ACCEPT_OCTAVE_ERRORS && Math.abs(Math.abs(d) - 12) <= PITCH_TOLERANCE_SEMITONES
+  return pitchInRange(played, { low: expected, high: expected })
 }
 
 export function gradeForOffset(offset: number): Grade {
@@ -105,15 +136,22 @@ export class Judge {
     return { targetIndex: index, grade, offset }
   }
 
-  /** Сыгранная нота в момент time (время трека) → оценка, если совпала с целью */
+  /**
+   * Сыгранная нота в момент time (время трека) → оценка, если совпала с целью.
+   * midi = NaN — удар без высоты (глухая нота): подходит только для глухих целей.
+   */
   play(time: number, midi: number): Judgment | null {
     const { best, bestOffset } = this.nearest(
       time,
-      (target, i) => !this.chords[i] && target.midis.some((m) => pitchMatches(midi, m)),
+      (target, i) =>
+        !this.chords[i] &&
+        (target.percussive || target.ranges.some((range) => pitchInRange(midi, range))),
     )
     if (best >= 0) return this.decide(best, bestOffset)
     // Высота от удара по аккорду, который судится по хроме, — не «лишняя нота»
-    if (this.nearest(time, (_, i) => this.chords[i]!).best < 0) this.extraNotes++
+    if (!Number.isNaN(midi) && this.nearest(time, (_, i) => this.chords[i]!).best < 0) {
+      this.extraNotes++
+    }
     return null
   }
 

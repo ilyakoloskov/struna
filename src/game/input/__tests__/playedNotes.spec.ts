@@ -51,8 +51,11 @@ describe('PlayedNoteDetector', () => {
     expect(notes.map((n) => n.time)).toEqual([0.2, 0.6])
   })
 
-  it('удар без устойчивой высоты (глухой щелчок) — не нота', () => {
-    expect(run([{ onset: 0.3 }, ...frames(0.3, 0.8, () => null)])).toEqual([])
+  it('удар без устойчивой высоты (глухая нота) — нота без высоты', () => {
+    const notes = run([{ onset: 0.3 }, ...frames(0.3, 0.8, () => null)])
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toMatchObject({ time: 0.3, source: 'onset' })
+    expect(notes[0]!.midi).toBeNaN()
   })
 
   it('легато: смена высоты без удара — новая нота', () => {

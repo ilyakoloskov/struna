@@ -137,4 +137,20 @@ describe('chartNotesFor', () => {
     // В 7-струнном стандарте A2 — открытая 5-я
     expect(tab(chartNotesFor(track, seven), seven)).toEqual(['5:0', '4:0'])
   })
+
+  it('приёмы: из файла — все; при своей расстановке — только не привязанные к ладам', async () => {
+    const { chartNotesFor } = await import('../fingering')
+    const withTechniques = {
+      ...track,
+      techniques: [{ harmonic: 'natural' as const, vibrato: true }, { slideIn: 'below' as const }],
+    }
+    expect(chartNotesFor(withTechniques, six).map((n) => n.technique)).toEqual([
+      { harmonic: 'natural', vibrato: true },
+      { slideIn: 'below' },
+    ])
+    expect(chartNotesFor(withTechniques, seven).map((n) => n.technique)).toEqual([
+      { vibrato: true },
+      undefined,
+    ])
+  })
 })

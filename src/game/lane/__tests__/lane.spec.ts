@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { createLayout, laneSpeed, laneWidth, stringX, timeToZ } from '../geometry'
 import { forEachVisible, maxDuration, ringActivity } from '../visibleNotes'
-import { ATLAS_COLUMNS, ATLAS_ROWS, DIGIT_UVS, digitCell } from '../digitAtlas'
+import {
+  ATLAS_COLUMNS,
+  ATLAS_ROWS,
+  GLYPH,
+  GLYPH_COUNT,
+  GLYPH_TEXT,
+  GLYPH_UVS,
+  digitCell,
+  glyphCell,
+} from '../digitAtlas'
 import { createTestPattern, testPatternDuration } from '../testPattern'
 import { heardTime } from '@/game/clock'
 
@@ -67,7 +76,7 @@ describe('digitCell', () => {
 
   it('таблица UV совпадает с ячейками', () => {
     const c = digitCell(13)
-    expect([...DIGIT_UVS.subarray(13 * 4, 13 * 4 + 4)]).toEqual(
+    expect([...GLYPH_UVS.subarray(13 * 4, 13 * 4 + 4)]).toEqual(
       [c.u0, c.v0, c.u1, c.v1].map(Math.fround),
     )
   })
@@ -76,6 +85,15 @@ describe('digitCell', () => {
     expect(digitCell(0)).toMatchObject({ u0: 0, v1: 1 })
     expect(digitCell(8)).toMatchObject({ u0: 0, v1: 1 - 1 / ATLAS_ROWS })
     expect(digitCell(99)).toEqual(digitCell(24))
+  })
+
+  it('знаки приёмов помещаются в атлас и не пересекаются с цифрами', () => {
+    expect(GLYPH_COUNT).toBeLessThanOrEqual(ATLAS_COLUMNS * ATLAS_ROWS)
+    const keys = new Set(GLYPH_TEXT.map((_, n) => `${glyphCell(n).u0}:${glyphCell(n).v0}`))
+    expect(keys.size).toBe(GLYPH_COUNT)
+    expect(GLYPH_TEXT[GLYPH.dead]).toBe('×')
+    expect(GLYPH_TEXT[GLYPH.palmMute]).toBe('PM')
+    expect(Math.max(...Object.values(GLYPH))).toBe(GLYPH_COUNT - 1)
   })
 })
 

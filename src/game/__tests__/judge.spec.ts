@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Judge, buildTargets, gradeForOffset, pitchMatches, type Judgment } from '../judge'
 import type { FrettedNote } from '@/domain/tracks/types'
+import type { NoteTechnique } from '@/domain/tracks/technique'
 
 const note = (time: number, midi: number, stringIndex = 0): FrettedNote => ({
   time,
@@ -124,5 +125,61 @@ describe('строгая проверка аккордов', () => {
 
   it('без строгого режима аккорд засчитывается любой нотой', () => {
     expect(new Judge(targets, false).play(1.0, 56)?.grade).toBe('perfect')
+  })
+})
+
+describe('приёмы', () => {
+  const withTechnique = (n: FrettedNote, technique: NoteTechnique): FrettedNote => ({
+    ...n,
+    technique,
+  })
+
+  it('бенд: засчитывается любая высота на пути подтяжки', () => {
+    const targets = buildTargets([
+      withTechnique(note(1, 62), { bend: { from: 0, peak: 2, to: 2 } }),
+    ])
+    for (const played of [62, 63, 64]) {
+      expect(new Judge(targets).play(1, played)?.grade).toBe('perfect')
+    }
+    expect(new Judge(targets).play(1, 65)).toBeNull()
+    expect(new Judge(targets).play(1, 61)).toBeNull()
+  })
+
+  it('пребенд с отпусканием: от подтянутой высоты до лада', () => {
+    const targets = buildTargets([
+      withTechnique(note(1, 62), { bend: { from: 2, peak: 2, to: 0 } }),
+    ])
+    expect(new Judge(targets).play(1, 64)).not.toBeNull()
+    expect(new Judge(targets).play(1, 62)).not.toBeNull()
+  })
+
+  it('слайд в ноту снизу: начало звучит ниже', () => {
+    const targets = buildTargets([withTechnique(note(1, 64), { slideIn: 'below' })])
+    expect(new Judge(targets).play(1, 61)).not.toBeNull()
+    expect(new Judge(targets).play(1, 66)).toBeNull()
+  })
+
+  it('глухая нота: засчитывается любой удар, в том числе без высоты', () => {
+    const targets = buildTargets([withTechnique(note(1, 40), { dead: true })])
+    expect(targets[0]).toMatchObject({ percussive: true, midis: [], strings: [0] })
+    expect(new Judge(targets).play(1.01, Number.NaN)?.grade).toBe('perfect')
+    expect(new Judge(targets).play(1.01, 57)?.grade).toBe('perfect')
+  })
+
+  it('удар без высоты — не попадание по обычной ноте и не лишняя нота', () => {
+    const judge = new Judge(buildTargets([note(1, 40)]))
+    expect(judge.play(1, Number.NaN)).toBeNull()
+    expect(judge.extraNotes).toBe(0)
+  })
+
+  it('глухие ноты в аккорде не мешают: судятся звучащие', () => {
+    const targets = buildTargets([
+      withTechnique(note(1, 40, 0), { dead: true }),
+      note(1, 47, 1),
+      note(1, 52, 2),
+    ])
+    expect(targets).toHaveLength(1)
+    expect(targets[0]).toMatchObject({ midis: [47, 52], percussive: false, strings: [0, 1, 2] })
+    expect(new Judge(targets).play(1, 47)).not.toBeNull()
   })
 })

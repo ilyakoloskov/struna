@@ -1,6 +1,7 @@
 import type { Tuning } from '@/domain/music/tunings'
 import { tuningMatches } from '@/domain/music/tunings'
 import type { FrettedNote, NoteEvent, SongTrack } from './types'
+import { portableTechnique } from './technique'
 
 // Расстановка нот по струнам и ладам для MIDI, где позиций нет.
 //
@@ -299,9 +300,18 @@ export function countUnplayable(notes: readonly FrettedNote[]): number {
  * иначе — расстановка под выбранный строй.
  */
 export function chartNotesFor(track: SongTrack, tuning: Tuning): FrettedNote[] {
-  const { positions, tuning: fileTuning } = track
+  const { positions, techniques, tuning: fileTuning } = track
   if (positions && fileTuning && tuningMatches(tuning, fileTuning)) {
-    return track.notes.map((note, i) => ({ ...note, ...positions[i]! }))
+    return track.notes.map((note, i) => {
+      const technique = techniques?.[i]
+      return { ...note, ...positions[i]!, ...(technique && { technique }) }
+    })
   }
-  return assignFingering(track.notes, tuning)
+  const notes = assignFingering(track.notes, tuning)
+  if (!techniques) return notes
+  // Расстановка своя: переносим только приёмы, не привязанные к ладам из файла
+  return notes.map((note, i) => {
+    const technique = portableTechnique(techniques[i])
+    return technique ? { ...note, technique } : note
+  })
 }

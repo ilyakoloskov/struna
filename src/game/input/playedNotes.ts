@@ -6,6 +6,7 @@ import { medianOf } from '@/audio/dsp/stabilizer'
 // Кадр высоты описывает окно длиной frameDuration, заканчивающееся в frame.time,
 // поэтому ждём кадры, окно которых целиком после атаки.
 // Легато (хаммер-он, слайд) — смена устойчивой высоты без нового удара — тоже нота.
+// Удар без устойчивой высоты (глухая нота) — нота с midi = NaN.
 
 export interface PitchSample {
   /** Конец окна анализа, с (часы AudioContext) */
@@ -18,7 +19,7 @@ export interface PitchSample {
 export interface PlayedNote {
   /** Начало ноты, с (часы AudioContext) */
   time: number
-  /** Дробный MIDI */
+  /** Дробный MIDI; NaN — удар без высоты (глухая нота) */
   midi: number
   source: 'onset' | 'legato'
 }
@@ -120,7 +121,12 @@ export class PlayedNoteDetector {
   private flush() {
     const pending = this.pending
     this.pending = null
-    if (!pending || pending.midis.length === 0) return
+    if (!pending) return
+    if (pending.midis.length === 0) {
+      this.currentNote = null
+      this.emit({ time: pending.time, midi: Number.NaN, source: 'onset' })
+      return
+    }
     const midi = medianOf(pending.midis)
     this.currentNote = Math.round(midi)
     this.emit({ time: pending.time, midi, source: 'onset' })

@@ -1,4 +1,6 @@
-// Модель трека, независимая от формата файла (MIDI сейчас, Guitar Pro — позже)
+import type { NoteTechnique } from './technique'
+
+// Модель трека, независимая от формата файла (MIDI, Guitar Pro)
 
 export interface NoteEvent {
   midi: number
@@ -32,6 +34,8 @@ export interface SongTrack {
    * Используются как есть, если строй совпадает с выбранным.
    */
   positions?: readonly NotePosition[]
+  /** Приёмы исполнения по индексу notes (Guitar Pro); undefined — обычная нота */
+  techniques?: readonly (NoteTechnique | undefined)[]
   /** Строй дорожки из файла, MIDI от низкой струны к высокой */
   tuning?: readonly number[]
 }
@@ -65,4 +69,5 @@ export interface FrettedNote extends NoteEvent {
   /** Индекс струны от самой низкой; −1 — нельзя сыграть в этом строе */
   stringIndex: number
   fret: number
+  technique?: NoteTechnique
 }

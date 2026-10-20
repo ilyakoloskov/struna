@@ -1,5 +1,6 @@
 import type * as AlphaTab from '@coderline/alphatab'
 import type { Beat, NoteEvent, NotePosition, Song, SongTrack } from './types'
+import { SLIDE_OUT_FRETS, hasTechnique, type NoteTechnique } from './technique'
 
 // Guitar Pro (.gp, .gp3–.gp7, .gpx) через alphaTab → наша модель Song.
 // Модуль alphaTab передаётся параметром: в приложении он грузится лениво (тяжёлый),
@@ -115,7 +116,7 @@ export function scoreToSong(at: AlphaTabModule, score: Score, fileName = ''): So
           percussion,
         },
       }
-      if (fretted && staff) return { ...base, ...frettedNotes(staff, played, toSeconds) }
+      if (fretted && staff) return { ...base, ...frettedNotes(at, staff, played, toSeconds) }
       const notes = (midiNotes.get(index) ?? []).map((n) => ({
         midi: n.key,
         time: toSeconds(n.start - tickShift),
@@ -151,15 +152,21 @@ export function scoreToSong(at: AlphaTabModule, score: Score, fileName = ''): So
   }
 }
 
-/** Ноты гитарной дорожки с позициями из файла, с учётом повторов */
+/** Ноты гитарной дорожки с позициями и приёмами из файла, с учётом повторов */
 function frettedNotes(
+  at: AlphaTabModule,
   staff: AlphaTab.model.Staff,
   played: readonly AlphaTab.midi.MasterBarTickLookup[],
   toSeconds: (tick: number) => number,
-): { notes: NoteEvent[]; positions: NotePosition[]; tuning: number[] } {
+): {
+  notes: NoteEvent[]
+  positions: NotePosition[]
+  techniques?: (NoteTechnique | undefined)[]
+  tuning: number[]
+} {
   // В alphaTab строй — от высокой струны к низкой, а note.string = 1 — самая низкая
   const tuning = [...staff.tuning].reverse()
-  const events: { note: NoteEvent; position: NotePosition }[] = []
+  const events: { note: NoteEvent; position: NotePosition; technique?: NoteTechnique }[] = []
   for (const occurrence of played) {
     const bar = staff.bars[occurrence.masterBar.index]
     if (!bar) continue
@@ -167,29 +174,83 @@ function frettedNotes(
       for (const beat of voice.beats) {
         const start = occurrence.start + beat.playbackStart
         for (const note of beat.notes) {
-          // Продолжение залиги и глухие ноты не играются отдельно
-          if (note.isTieDestination || note.isDead) continue
+          // Продолжение залиги не играется отдельно
+          if (note.isTieDestination) continue
           const stringIndex = note.string - 1
           const open = tuning[stringIndex]
           if (open === undefined) continue
-          const midi = note.realValue
           const length = tiedLength(note, beat)
+          const technique = noteTechnique(at, note)
           events.push({
             note: {
-              midi,
+              // У флажолета звучит высота флажолета, а прижат — лад из файла
+              midi: note.realValue,
               time: toSeconds(start),
               duration: toSeconds(start + length) - toSeconds(start),
               velocity: 0.8,
             },
             // Лад — от высоты, а не note.fret: так капо и транспонирование не сбивают позицию
-            position: { stringIndex, fret: midi - open },
+            position: { stringIndex, fret: note.realValueWithoutHarmonic - open },
+            ...(technique && { technique }),
           })
         }
       }
     }
   }
   events.sort((a, b) => a.note.time - b.note.time || a.note.midi - b.note.midi)
-  return { notes: events.map((e) => e.note), positions: events.map((e) => e.position), tuning }
+  const techniques = events.map((e) => e.technique)
+  return {
+    notes: events.map((e) => e.note),
+    positions: events.map((e) => e.position),
+    techniques: techniques.some(Boolean) ? techniques : undefined,
+    tuning,
+  }
+}
+
+/** Приёмы ноты из модели alphaTab; undefined — обычная нота */
+export function noteTechnique(
+  at: AlphaTabModule,
+  note: AlphaTab.model.Note,
+): NoteTechnique | undefined {
+  const { HarmonicType, SlideInType, SlideOutType, VibratoType } = at.model
+  const t: NoteTechnique = {}
+  if (note.harmonicType !== HarmonicType.None) {
+    t.harmonic = note.harmonicType === HarmonicType.Natural ? 'natural' : 'artificial'
+  }
+  if (note.hasBend && note.bendPoints && note.bendPoints.length > 0) {
+    // Значения точек — четверти тона
+    const values = note.bendPoints.map((p) => p.value / 2)
+    t.bend = { from: values[0]!, peak: Math.max(...values), to: values.at(-1)! }
+  }
+  const origin = note.hammerPullOrigin
+  if (origin) t.legato = note.realValue >= origin.realValue ? 'hammer' : 'pull'
+  else if (note.slideOrigin?.slideOutType === SlideOutType.Legato) t.legato = 'slide'
+
+  if (note.slideInType === SlideInType.IntoFromBelow) t.slideIn = 'below'
+  if (note.slideInType === SlideInType.IntoFromAbove) t.slideIn = 'above'
+  switch (note.slideOutType) {
+    case SlideOutType.Shift:
+    case SlideOutType.Legato:
+      if (note.slideTarget) {
+        t.slideOut = {
+          frets: note.slideTarget.realValueWithoutHarmonic - note.realValueWithoutHarmonic,
+          toNote: true,
+        }
+      }
+      break
+    case SlideOutType.OutUp:
+    case SlideOutType.PickSlideUp:
+      t.slideOut = { frets: SLIDE_OUT_FRETS, toNote: false }
+      break
+    case SlideOutType.OutDown:
+    case SlideOutType.PickSlideDown:
+      t.slideOut = { frets: -SLIDE_OUT_FRETS, toNote: false }
+      break
+  }
+  if (note.isPalmMute) t.palmMute = true
+  if (note.vibrato !== VibratoType.None) t.vibrato = true
+  if (note.isDead) t.dead = true
+  return hasTechnique(t) ? t : undefined
 }
 
 /** Длительность с учётом залиги на следующие доли, в тиках */

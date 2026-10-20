@@ -18,7 +18,8 @@ import {
 import { BloomEffect, EffectComposer, EffectPass, RenderPass } from 'postprocessing'
 import type { Beat, FrettedNote } from '@/domain/tracks/types'
 import type { GameClock } from '../clock'
-import { ATLAS_MAX, DIGIT_UVS } from '../lane/digitAtlas'
+import { GLYPH_UVS } from '../lane/digitAtlas'
+import { MAX_MARKS, buildNoteLooks, type NoteLooks } from '../lane/noteLook'
 import {
   createLayout,
   laneSpeed,
@@ -34,17 +35,25 @@ import * as glsl from './shaders'
 
 // Рендер игровой дорожки. Цикл кадра не создаёт объектов: видимые ноты пишутся
 // в заранее выделенные буферы инстансов (это и есть пул), меняется только instanceCount.
+// Ноты стоят на дорожке, развёрнутые к камере; номера ладов и знаки приёмов рисуются
+// отдельным проходом после bloom — белые с тёмной обводкой, свечение их не размывает.
 
 const NOTE_CAPACITY = 512
+/** Надписи: номер лада + знаки приёмов на каждую ноту */
+const LABEL_CAPACITY = NOTE_CAPACITY * (1 + MAX_MARKS)
 const TAIL_CAPACITY = 256
 const BEAT_CAPACITY = 96
 
 /** Камера под макет: смещение от точки взгляда на дорожке (z = target) */
 const CAMERA = { fov: 32, aspect: 1.6, height: 12, distance: 21.25, target: -7 }
 
-/** Размер плашки ноты в долях расстояния между струнами (76×42 при 96 px на макете) */
+/** Размер плашки ноты в долях расстояния между струнами: ширина и высота (нота стоит) */
 const NOTE_WIDTH = 0.8
-const NOTE_DEPTH = 0.44
+const NOTE_HEIGHT = 0.56
+/** Номер лада на плашке и знаки приёмов над ней, доли расстояния между струнами */
+const LABEL_SIZE = 0.52
+const MARK_SIZE = 0.5
+const MARK_GAP = 0.05
 const TAIL_WIDTH = 0.19
 /** Сколько секунд плашка видна после линии удара */
 const NOTE_PAST = 0.06
@@ -87,6 +96,8 @@ export class LaneRenderer {
   private readonly renderer: WebGLRenderer
   private readonly composer: EffectComposer
   private readonly scene = new Scene()
+  /** Надписи поверх кадра после bloom */
+  private readonly overlay = new Scene()
   private readonly camera = new PerspectiveCamera(32, 1, 0.1, 100)
   private readonly layout: LaneLayout
   private readonly colors: Color[]
@@ -94,6 +105,7 @@ export class LaneRenderer {
   private readonly disposables: { dispose(): void }[] = []
 
   private notes: readonly FrettedNote[] = []
+  private looks: NoteLooks = buildNoteLooks([])
   private longestNote = 0
   private beats: readonly Beat[] = []
   private clock: GameClock | null = null
@@ -104,6 +116,10 @@ export class LaneRenderer {
   private ringsLayer!: InstancedLayer
   private ringMaterial!: ShaderMaterial
   private noteMaterial!: ShaderMaterial
+  private labelsLayer!: InstancedLayer
+  private labelMaterial!: ShaderMaterial
+  /** Наклон стоящих нот — перпендикуляр к взгляду камеры */
+  private readonly up = new Vector3(0, 1, 0)
   private readonly ringActivity: Float32Array
   private readonly ringFlash: Float32Array
   private noteStates: Uint8Array | null = null
@@ -169,16 +185,18 @@ export class LaneRenderer {
     this.resize()
   }
 
-  /** Загружает атлас цифр — до этого номера ладов не видны */
+  /** Загружает атлас глифов — до этого номера ладов и знаки приёмов не видны */
   async init(): Promise<void> {
-    const digits = await createDigitTexture()
-    this.disposables.push(digits)
-    this.noteMaterial.uniforms.uDigits!.value = digits
+    const glyphs = await createDigitTexture()
+    this.disposables.push(glyphs)
+    this.labelMaterial.uniforms.uGlyphs!.value = glyphs
+    this.labelsLayer.mesh.visible = true
   }
 
   /** Ноты партии; индексы совпадают с массивом состояний (неиграбельные пропускаются при отрисовке) */
   setNotes(notes: readonly FrettedNote[]): void {
     this.notes = notes
+    this.looks = buildNoteLooks(notes)
     this.longestNote = maxDuration(notes)
   }
 
@@ -258,17 +276,21 @@ export class LaneRenderer {
       this.ringMaterial.uniforms.uPulse!.value = 0.5 + 0.5 * Math.sin(now / 260)
     }
     this.composer.render()
+    // Композер не очищает экран перед следующим рендером (autoClear выключен им же)
+    this.renderer.render(this.overlay, this.camera)
   }
 
   // Состояние текущего кадра — в полях, чтобы обработчик ноты не был замыканием
   private frameTime = 0
   private noteCount = 0
+  private labelCount = 0
   private tailCount = 0
 
   private updateNotes(songTime: number) {
     const layout = this.layout
     this.frameTime = songTime
     this.noteCount = 0
+    this.labelCount = 0
     this.tailCount = 0
     this.ringActivity.fill(0)
 
@@ -280,9 +302,15 @@ export class LaneRenderer {
       this.visitNote,
     )
 
+    // Ноты пришли от ближних к дальним; рисовать нужно наоборот — ближняя стоящая нота
+    // закрывает дальнюю (тест глубины выключен)
+    reverseInstances(this.notesLayer, this.noteCount)
+    reverseInstances(this.labelsLayer, this.labelCount)
     this.notesLayer.geometry.instanceCount = this.noteCount
+    this.labelsLayer.geometry.instanceCount = this.labelCount
     this.tailsLayer.geometry.instanceCount = this.tailCount
     markUpdated(this.notesLayer)
+    markUpdated(this.labelsLayer)
     markUpdated(this.tailsLayer)
 
     // Кольцо: максимум из подсказки «нота на линии» и вспышки попадания
@@ -331,9 +359,11 @@ export class LaneRenderer {
       const a = this.notesLayer.attributes
       const i = this.noteCount
       write3(a.aOffset!, i, x, 0.01, z)
+      let alpha = 1
       if (state === NOTE_GHOST) {
         // Заход перед петлёй — тускло и ниже порога bloom
         write3(a.aColor!, i, color.r * GHOST_LEVEL, color.g * GHOST_LEVEL, color.b * GHOST_LEVEL)
+        alpha = 0.35
       } else if (state === NOTE_MISSED) {
         const grey = (color.r + color.g + color.b) / 3
         write3(
@@ -343,14 +373,53 @@ export class LaneRenderer {
           (color.g + (grey * 0.4 - color.g) * MISSED_TINT) * 0.6,
           (color.b + (grey * 0.4 - color.b) * MISSED_TINT) * 0.6,
         )
+        alpha = 0.55
       } else {
         write3(a.aColor!, i, color.r, color.g, color.b)
       }
-      const fret = Math.max(0, Math.min(ATLAS_MAX, note.fret))
-      const digit = a.aDigit!.array as Float32Array
-      for (let k = 0; k < 4; k++) digit[i * 4 + k] = DIGIT_UVS[fret * 4 + k]!
+      const looks = this.looks
+      ;(a.aShape!.array as Float32Array)[i] = looks.shape[index] ?? 0
+      ;(a.aMute!.array as Float32Array)[i] = looks.mute[index] ?? 0
       this.noteCount++
+
+      // Номер лада на плашке и знаки приёмов над ней
+      const spacing = layout.stringSpacing
+      const label = (NOTE_HEIGHT - LABEL_SIZE) / 2
+      this.pushLabel(x, z, LABEL_SIZE * spacing, label * spacing, looks.label[index] ?? 0, alpha)
+      let marks = 0
+      while (marks < MAX_MARKS && (looks.marks[index * MAX_MARKS + marks] ?? -1) >= 0) marks++
+      for (let k = 0; k < marks; k++) {
+        const dx = (k - (marks - 1) / 2) * MARK_SIZE * spacing
+        this.pushLabel(
+          x + dx,
+          z,
+          MARK_SIZE * spacing,
+          (NOTE_HEIGHT + MARK_GAP) * spacing,
+          looks.marks[index * MAX_MARKS + k]!,
+          alpha,
+        )
+      }
     }
+  }
+
+  private pushLabel(
+    x: number,
+    z: number,
+    size: number,
+    lift: number,
+    glyph: number,
+    alpha: number,
+  ) {
+    if (this.labelCount >= LABEL_CAPACITY) return
+    const a = this.labelsLayer.attributes
+    const i = this.labelCount
+    write3(a.aOffset!, i, x, 0.01, z)
+    write2(a.aSize!, i, size, size)
+    ;(a.aLift!.array as Float32Array)[i] = lift
+    ;(a.aAlpha!.array as Float32Array)[i] = alpha
+    const uv = a.aGlyph!.array as Float32Array
+    for (let k = 0; k < 4; k++) uv[i * 4 + k] = GLYPH_UVS[glyph * 4 + k]!
+    this.labelCount++
   }
 
   private burst(stringIndex: number, count: number) {
@@ -517,23 +586,42 @@ export class LaneRenderer {
     this.add(hitLine, 4, hitGeometry, hitMaterial)
 
     // Ноты
+    const upUniform = { value: this.up }
     this.noteMaterial = new ShaderMaterial({
       vertexShader: glsl.noteVertex,
       fragmentShader: glsl.noteFragment,
       transparent: true,
       depthTest: false,
-      uniforms: {
-        uLength: lengthUniform,
-        uDigits: { value: null as Texture | null },
-        uInk: { value: new Color('#0a0a12') },
-      },
+      uniforms: { uLength: lengthUniform, uUp: upUniform },
     })
     this.notesLayer = this.instanced(
       NOTE_CAPACITY,
-      { aOffset: 3, aSize: 2, aColor: 3, aDigit: 4 },
+      { aOffset: 3, aSize: 2, aColor: 3, aShape: 1, aMute: 1 },
       this.noteMaterial,
       5,
     )
+
+    // Надписи — в отдельной сцене поверх кадра
+    this.labelMaterial = new ShaderMaterial({
+      vertexShader: glsl.labelVertex,
+      fragmentShader: glsl.labelFragment,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      uniforms: {
+        uLength: lengthUniform,
+        uUp: upUniform,
+        uGlyphs: { value: null as Texture | null },
+      },
+    })
+    this.labelsLayer = this.instanced(
+      LABEL_CAPACITY,
+      { aOffset: 3, aSize: 2, aLift: 1, aGlyph: 4, aAlpha: 1 },
+      this.labelMaterial,
+      0,
+      this.overlay,
+    )
+    this.labelsLayer.mesh.visible = false
     this.particlesLayer = this.instanced(
       PARTICLE_CAPACITY,
       { aOffset: 3, aSize: 2, aColor: 3 },
@@ -550,7 +638,7 @@ export class LaneRenderer {
     const noteSize = this.notesLayer.attributes.aSize!.array as Float32Array
     for (let i = 0; i < NOTE_CAPACITY; i++) {
       noteSize[i * 2] = NOTE_WIDTH * layout.stringSpacing
-      noteSize[i * 2 + 1] = NOTE_DEPTH * layout.stringSpacing
+      noteSize[i * 2 + 1] = NOTE_HEIGHT * layout.stringSpacing
     }
   }
 
@@ -559,6 +647,7 @@ export class LaneRenderer {
     attributes: Record<string, number>,
     material: ShaderMaterial,
     renderOrder: number,
+    scene: Scene = this.scene,
   ): InstancedLayer {
     const geometry = new InstancedBufferGeometry()
     geometry.copy(new PlaneGeometry(1, 1) as unknown as InstancedBufferGeometry)
@@ -574,14 +663,20 @@ export class LaneRenderer {
     }
     geometry.instanceCount = 0
     const mesh = new Mesh(geometry, material)
-    this.add(mesh, renderOrder, geometry, material)
+    this.add(mesh, renderOrder, geometry, material, scene)
     return { mesh, geometry, attributes: created }
   }
 
-  private add(mesh: Mesh, renderOrder: number, geometry: BufferGeometry, material: ShaderMaterial) {
+  private add(
+    mesh: Mesh,
+    renderOrder: number,
+    geometry: BufferGeometry,
+    material: ShaderMaterial,
+    scene: Scene = this.scene,
+  ) {
     mesh.renderOrder = renderOrder
     mesh.frustumCulled = false
-    this.scene.add(mesh)
+    scene.add(mesh)
     this.disposables.push(geometry, material)
   }
 
@@ -597,6 +692,10 @@ export class LaneRenderer {
     this.camera.position.set(0, CAMERA.height * fit, CAMERA.target + CAMERA.distance * fit)
     this.camera.lookAt(0, 0, CAMERA.target)
     this.camera.updateProjectionMatrix()
+    // Нота стоит перпендикулярно взгляду камеры на линию удара — лицом к игроку
+    const view = this.projected.set(0, 0, 0).sub(this.camera.position).normalize()
+    this.up.set(0, -view.z, view.y)
+    if (this.up.y < 0) this.up.negate()
   }
 
   private resize() {
@@ -646,4 +745,20 @@ function write2(attribute: InstancedBufferAttribute, index: number, a: number, b
 
 function markUpdated(layer: InstancedLayer) {
   for (const name in layer.attributes) layer.attributes[name]!.needsUpdate = true
+}
+
+/** Разворачивает первые count инстансов слоя (порядок отрисовки), на месте, без аллокаций */
+function reverseInstances(layer: InstancedLayer, count: number) {
+  for (const name in layer.attributes) {
+    const attribute = layer.attributes[name]!
+    const array = attribute.array as Float32Array
+    const size = attribute.itemSize
+    for (let lo = 0, hi = count - 1; lo < hi; lo++, hi--) {
+      for (let k = 0; k < size; k++) {
+        const t = array[lo * size + k]!
+        array[lo * size + k] = array[hi * size + k]!
+        array[hi * size + k] = t
+      }
+    }
+  }
 }

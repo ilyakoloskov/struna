@@ -202,7 +202,7 @@ export function useGameSession(deps: SessionDeps) {
         const target = targets[botCursor]!
         if (!plan.skip) {
           if (judge.isChordTarget(botCursor)) playChord(plan.time, expectedChroma(target.midis))
-          else play(plan.time, target.midis[0]!)
+          else play(plan.time, target.midis[0] ?? Number.NaN)
         }
         botCursor++
       }

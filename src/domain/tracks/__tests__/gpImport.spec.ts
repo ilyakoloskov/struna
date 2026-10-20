@@ -56,11 +56,12 @@ describe('scoreToSong', () => {
     expect(lead.positions).toHaveLength(lead.notes.length)
   })
 
-  it('аккорд — ноты в одно время; глухая нота пропущена', () => {
+  it('аккорд — ноты в одно время; глухая нота — с приёмом dead', () => {
     const chord = lead.notes.filter((n) => n.time === 4)
     expect(chord.map((n) => n.midi)).toEqual([40, 47, 52])
     expect(chord[0]!.duration).toBeCloseTo(1)
-    expect(lead.notes.find((n) => n.time === 5)).toBeUndefined() // x.6 — глухая
+    const dead = lead.notes.findIndex((n) => n.time === 5) // x.6
+    expect(lead.techniques?.[dead]).toEqual({ dead: true })
     expect(lead.notes.at(-1)).toMatchObject({ midi: 62, time: 5.5 })
   })
 
@@ -118,5 +119,72 @@ describe('названия GM', () => {
       expect(gmName(program)).toBe(track.instrument.name)
       expect(gmFamily(program)).toBe(track.instrument.family)
     }
+  })
+})
+
+describe('приёмы из Guitar Pro', () => {
+  const song = scoreToSong(
+    at,
+    fromTex(`\\track "G" \\staff {tabs} \\tuning (E4 B3 G3 D3 A2 E2)
+12.6{nh}.4 7.3{b (0 4)}.4 5.3{h}.8 7.3.8 7.3{h}.8 5.3.8 |
+5.3{sl}.4 7.3.4 5.3{ss}.4 7.3.4 |
+x.6.4 3.6{pm}.4 5.2{v}.4 5.2{sib}.4 |
+5.2{sou}.4 7.2{b prebendrelease (4 4 0)}.4 5.2{ph 5}.4 r.4 |`),
+  )
+  const track = song.tracks[0]!
+  const noteAt = (time: number) => {
+    const i = track.notes.findIndex((n) => n.time === time)
+    return {
+      note: track.notes[i]!,
+      position: track.positions![i]!,
+      technique: track.techniques?.[i],
+    }
+  }
+
+  it('натуральный флажолет: лад из файла, высота — флажолета', () => {
+    const { note, position, technique } = noteAt(0)
+    expect(position).toEqual({ stringIndex: 0, fret: 12 })
+    expect(note.midi).toBe(52)
+    expect(technique).toEqual({ harmonic: 'natural' })
+  })
+
+  it('искусственный флажолет звучит выше прижатого лада', () => {
+    const { note, position, technique } = noteAt(7)
+    expect(position.fret).toBe(5)
+    expect(note.midi).toBeGreaterThan(64)
+    expect(technique).toEqual({ harmonic: 'artificial' })
+  })
+
+  it('бенд и пребенд с отпусканием — в полутонах', () => {
+    expect(noteAt(0.5).technique).toEqual({ bend: { from: 0, peak: 2, to: 2 } })
+    expect(noteAt(0.5).note.midi).toBe(62) // высота — прижатый лад
+    expect(noteAt(6.5).technique).toEqual({ bend: { from: 2, peak: 2, to: 0 } })
+  })
+
+  it('хаммер-он и пулл-офф отмечены на второй ноте', () => {
+    expect(noteAt(1).technique).toBeUndefined()
+    expect(noteAt(1.25).technique).toEqual({ legato: 'hammer' })
+    expect(noteAt(1.75).technique).toEqual({ legato: 'pull' })
+  })
+
+  it('слайды: легато ведёт в ноту без удара, шифт — с ударом, «в никуда», въезд', () => {
+    expect(noteAt(2).technique).toEqual({ slideOut: { frets: 2, toNote: true } })
+    expect(noteAt(2.5).technique).toEqual({ legato: 'slide' })
+    expect(noteAt(3).technique).toEqual({ slideOut: { frets: 2, toNote: true } })
+    expect(noteAt(3.5).technique).toBeUndefined()
+    expect(noteAt(5.5).technique).toEqual({ slideIn: 'below' })
+    expect(noteAt(6).technique).toEqual({ slideOut: { frets: 3, toNote: false } })
+  })
+
+  it('глухая нота, палм-мьют, вибрато', () => {
+    expect(noteAt(4).technique).toEqual({ dead: true })
+    expect(noteAt(4.5).technique).toEqual({ palmMute: true })
+    expect(noteAt(5).technique).toEqual({ vibrato: true })
+  })
+
+  it('массив приёмов совпадает с нотами; без приёмов — не хранится', () => {
+    expect(track.techniques).toHaveLength(track.notes.length)
+    const plain = scoreToSong(at, fromTex(`\\track "G" \\staff {tabs} 0.6.4 3.6.4 |`))
+    expect(plain.tracks[0]!.techniques).toBeUndefined()
   })
 })

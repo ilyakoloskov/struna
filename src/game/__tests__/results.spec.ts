@@ -13,6 +13,8 @@ import { findPreset } from '@/domain/music/tunings'
 const target = (time: number, strings = [0]): Target => ({
   time,
   midis: strings.map(() => 40),
+  ranges: strings.map(() => ({ low: 40, high: 40 })),
+  percussive: false,
   strings,
   noteIndices: [0],
 })
