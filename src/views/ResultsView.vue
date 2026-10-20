@@ -48,8 +48,15 @@ function playQuery(extra: Record<string, string>) {
   const r = result.value!
   const exercise = r.trackId.startsWith('exercise:')
   if (exercise) {
-    const [, key, mode, frets] = r.trackId.split(':')
-    return { name: 'play', params: { trackId: 'exercise' }, query: { key, mode, frets, ...extra } }
+    const [, key, mode, where] = r.trackId.split(':')
+    // Позиция (boxes2 / caged3) или диапазон ладов (5-9)
+    const position = /^(boxes|caged)(\d)$/.exec(where ?? '')
+    const placement = position ? { sys: position[1], pos: position[2] } : { frets: where }
+    return {
+      name: 'play',
+      params: { trackId: 'exercise' },
+      query: { key, mode, ...placement, ...extra },
+    }
   }
   return { name: 'play', params: { trackId: r.trackId }, query: extra }
 }

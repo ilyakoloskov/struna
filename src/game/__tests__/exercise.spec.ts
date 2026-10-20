@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createScaleExercise, exerciseTrackId, scaleRun } from '../exercise'
+import { createPositionExercise, createScaleExercise, exerciseTrackId, scaleRun } from '../exercise'
+import { boxPositions, cagedPositions } from '@/domain/theory/positions'
 import { findPreset } from '@/domain/music/tunings'
 import { buildScale, findScale } from '@/domain/theory/scales'
 import { parseSpelledNote } from '@/domain/theory/notes'
@@ -30,9 +31,34 @@ describe('упражнение на гамму', () => {
     expect(createScaleExercise(six, aMinorPent, { from: 1, to: 1 }, 80)).toBeNull()
   })
 
-  it('ключ для истории', () => {
+  it('ключ для истории — с диапазоном или позицией', () => {
     expect(exerciseTrackId('A', 'minor-pentatonic', { from: 5, to: 8 }, '6-standard-e')).toBe(
       'exercise:A:minor-pentatonic:5-8:6-standard-e',
     )
+    expect(
+      exerciseTrackId('A', 'minor-pentatonic', { from: 0, to: 15 }, '6-standard-e', {
+        number: 2,
+        system: 'caged',
+      }),
+    ).toBe('exercise:A:minor-pentatonic:caged2:6-standard-e')
+  })
+
+  it('упражнение в позиции играет ровно её клетки вверх и вниз', () => {
+    const box = boxPositions(six, aMinorPent)[0]!
+    const exercise = createPositionExercise(six, aMinorPent, box, 100)!
+    const keys = new Set(box.cells.map((c) => `${c.stringIndex}:${c.fret}`))
+    expect(exercise.notes.every((n) => keys.has(`${n.stringIndex}:${n.fret}`))).toBe(true)
+    // 12 нот вверх и 11 вниз
+    expect(exercise.notes).toHaveLength(23)
+    expect(exercise.notes[0]).toMatchObject({ stringIndex: 0, fret: 5 })
+    expect(exercise.notes.at(-1)).toMatchObject({ stringIndex: 0, fret: 5 })
+    expect(exercise.song.name).toContain('бокс 1')
+  })
+
+  it('упражнение в форме CAGED', () => {
+    const form = cagedPositions(six, aMinorPent)[0]!
+    const exercise = createPositionExercise(six, aMinorPent, form, 100)!
+    expect(exercise.song.name).toContain('форма')
+    expect(exercise.notes.length).toBeGreaterThan(10)
   })
 })

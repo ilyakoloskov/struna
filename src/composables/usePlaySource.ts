@@ -11,9 +11,11 @@ import {
   EXERCISE_DEFAULT_BPM,
   EXERCISE_MAX_BPM,
   EXERCISE_MIN_BPM,
+  createPositionExercise,
   createScaleExercise,
   exerciseTrackId,
 } from '@/game/exercise'
+import { scalePositions } from '@/domain/theory/positions'
 import { TEST_BPM, createTestPattern, testPatternDuration } from '@/game/lane/testPattern'
 import { guitarTrackOf, useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
@@ -61,8 +63,24 @@ export function usePlaySource(trackId: Ref<string>) {
       Math.max(EXERCISE_MIN_BPM, Number(first(route.query.bpm)) || EXERCISE_DEFAULT_BPM),
     )
     if (!tonic || !type) return null
-    const generated = createScaleExercise(tuning.value, buildScale(tonic, type), range, bpm)
-    return generated && { ...generated, id: exerciseTrackId(key, type.id, range, tuningId.value) }
+    const scale = buildScale(tonic, type)
+    // Позиция (бокс или форма CAGED) — играются ровно её клетки
+    const system = first(route.query.sys) === 'caged' ? 'caged' : 'boxes'
+    const positionNumber = Number(first(route.query.pos)) || 0
+    const position = positionNumber
+      ? scalePositions(tuning.value, scale, system)[positionNumber - 1]
+      : undefined
+    const generated = position
+      ? createPositionExercise(tuning.value, scale, position, bpm)
+      : createScaleExercise(tuning.value, scale, range, bpm)
+    const id = exerciseTrackId(
+      key,
+      type.id,
+      range,
+      tuningId.value,
+      position ? { number: positionNumber, system } : undefined,
+    )
+    return generated && { ...generated, id }
   })
 
   const source = computed<PlaySource | null>(() => {

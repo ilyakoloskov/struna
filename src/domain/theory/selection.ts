@@ -2,6 +2,7 @@ import { formatNote as formatMidiNote, parseNote } from '@/domain/music/pitch'
 import { findPreset, isValidCustomMidis, type TuningId } from '@/domain/music/tunings'
 import { clampFretRange, formatFretRange, parseFretRange, type FretRange } from './fretboard'
 import { isSameNote, parseSpelledNote, toAscii, type SpelledNote } from './notes'
+import type { PositionSystem } from './positions'
 import { findScale, type LabelKind, type ScaleId } from './scales'
 
 // Выбор на страницах теории ↔ query-параметры URL, чтобы ссылкой можно было поделиться:
@@ -15,6 +16,9 @@ export interface TheorySelection {
   scaleId: ScaleId
   labels: LabelMode
   fretRange: FretRange
+  /** Номер позиции гаммы, 0 — весь гриф */
+  position: number
+  positionSystem: PositionSystem
 }
 
 export interface TuningSelection {
@@ -27,6 +31,8 @@ export const DEFAULT_SELECTION: TheorySelection = {
   scaleId: 'ionian',
   labels: 'notes',
   fretRange: { from: 0, to: 15 },
+  position: 0,
+  positionSystem: 'boxes',
 }
 
 export type QueryValue = string | null | (string | null)[] | undefined
@@ -56,6 +62,11 @@ export function parseTheoryQuery(query: Query): Partial<TheorySelection> {
   const frets = first(query.frets)
   const range = frets ? parseFretRange(frets) : null
   if (range) result.fretRange = clampFretRange(range)
+
+  const position = Number(first(query.pos))
+  if (Number.isInteger(position) && position >= 0 && position <= 7) result.position = position
+  const system = first(query.sys)
+  if (system === 'boxes' || system === 'caged') result.positionSystem = system
   return result
 }
 
@@ -69,6 +80,10 @@ export function toTheoryQuery(selection: TheorySelection): Record<string, string
   const { from, to } = selection.fretRange
   if (from !== DEFAULT_SELECTION.fretRange.from || to !== DEFAULT_SELECTION.fretRange.to) {
     query.frets = formatFretRange(selection.fretRange)
+  }
+  if (selection.position) query.pos = String(selection.position)
+  if (selection.positionSystem !== DEFAULT_SELECTION.positionSystem) {
+    query.sys = selection.positionSystem
   }
   return query
 }
@@ -99,6 +114,8 @@ export function isSameSelection(a: TheorySelection, b: TheorySelection): boolean
     a.scaleId === b.scaleId &&
     a.labels === b.labels &&
     a.fretRange.from === b.fretRange.from &&
-    a.fretRange.to === b.fretRange.to
+    a.fretRange.to === b.fretRange.to &&
+    a.position === b.position &&
+    a.positionSystem === b.positionSystem
   )
 }

@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { diatonicTriads } from '@/domain/theory/chords'
 import type { FretRange } from '@/domain/theory/fretboard'
+import type { PositionSystem } from '@/domain/theory/positions'
 import type { Key } from '@/domain/theory/keys'
 import type { SpelledNote } from '@/domain/theory/notes'
 import { buildScale, findScale, type ScaleId } from '@/domain/theory/scales'
@@ -13,6 +14,8 @@ export const useTheoryStore = defineStore('theory', () => {
   const scaleId = ref<ScaleId>(DEFAULT_SELECTION.scaleId)
   const labels = ref<LabelMode>(DEFAULT_SELECTION.labels)
   const fretRange = ref<FretRange>({ ...DEFAULT_SELECTION.fretRange })
+  const position = ref(DEFAULT_SELECTION.position)
+  const positionSystem = ref<PositionSystem>(DEFAULT_SELECTION.positionSystem)
 
   const scaleType = computed(() => findScale(scaleId.value)!)
   const scale = computed(() => buildScale(tonic.value, scaleType.value))
@@ -24,6 +27,8 @@ export const useTheoryStore = defineStore('theory', () => {
     scaleId: scaleId.value,
     labels: labels.value,
     fretRange: fretRange.value,
+    position: position.value,
+    positionSystem: positionSystem.value,
   }))
 
   function apply(partial: Partial<TheorySelection>) {
@@ -31,12 +36,15 @@ export const useTheoryStore = defineStore('theory', () => {
     if (partial.scaleId) scaleId.value = partial.scaleId
     if (partial.labels) labels.value = partial.labels
     if (partial.fretRange) fretRange.value = partial.fretRange
+    if (partial.position !== undefined) position.value = partial.position
+    if (partial.positionSystem) positionSystem.value = partial.positionSystem
   }
 
   /** Выбор тональности на квинтовом круге: мажор → ионийский, минор → эолийский */
   function selectKey(next: Key) {
     tonic.value = next.tonic
     scaleId.value = next.quality === 'major' ? 'ionian' : 'aeolian'
+    position.value = 0
   }
 
   return {
@@ -44,6 +52,8 @@ export const useTheoryStore = defineStore('theory', () => {
     scaleId,
     labels,
     fretRange,
+    position,
+    positionSystem,
     scaleType,
     scale,
     key,

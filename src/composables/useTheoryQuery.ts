@@ -11,7 +11,7 @@ import {
 import { useSettingsStore } from '@/stores/settings'
 import { useTheoryStore } from '@/stores/theory'
 
-const OWN_PARAMS = new Set(['key', 'mode', 'labels', 'frets', 'tuning'])
+const OWN_PARAMS = new Set(['key', 'mode', 'labels', 'frets', 'tuning', 'pos', 'sys'])
 
 /**
  * Двусторонняя синхронизация выбора теории (тональность, лад, подписи, лады, строй) с URL.

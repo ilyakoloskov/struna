@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import FretboardDiagram from '@/components/theory/FretboardDiagram.vue'
 import LiveToggle from '@/components/theory/LiveToggle.vue'
 import NowPlayingCard from '@/components/theory/NowPlayingCard.vue'
+import PositionPicker from '@/components/theory/PositionPicker.vue'
 import ScaleExercise from '@/components/theory/ScaleExercise.vue'
 import ScaleSummary from '@/components/theory/ScaleSummary.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
@@ -16,13 +17,14 @@ import { usePitchDetector } from '@/composables/usePitchDetector'
 import { MAX_FRETS, clampFretRange, positionsOf } from '@/domain/theory/fretboard'
 import { formatNote, parseSpelledNote, toAscii } from '@/domain/theory/notes'
 import { SCALES, TONIC_CHOICES, describePitch, type ScaleId } from '@/domain/theory/scales'
+import { scalePositions, supportsCaged } from '@/domain/theory/positions'
 import type { LabelMode } from '@/domain/theory/selection'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheoryStore } from '@/stores/theory'
 
 const theory = useTheoryStore()
 const settings = useSettingsStore()
-const { scale, triads, scaleId, labels, fretRange } = storeToRefs(theory)
+const { scale, triads, scaleId, labels, fretRange, position, positionSystem } = storeToRefs(theory)
 const { tuning, tuningId } = storeToRefs(settings)
 
 // --- Управление ---
@@ -60,6 +62,26 @@ const fretTo = computed({
   get: () => fretRange.value.to,
   set: (to: number) =>
     (fretRange.value = clampFretRange({ from: Math.min(fretRange.value.from, to - 1), to })),
+})
+
+// --- Позиции гаммы ---
+
+const cagedAvailable = computed(() => supportsCaged(tuning.value))
+const positions = computed(() => scalePositions(tuning.value, scale.value, positionSystem.value))
+const selectedPosition = computed(() =>
+  position.value ? (positions.value[position.value - 1] ?? null) : null,
+)
+
+// Позиция не должна обрезаться диапазоном ладов
+watch(selectedPosition, (p) => {
+  if (!p) return
+  const { from, to } = fretRange.value
+  if (p.minFret < from || p.maxFret > to) {
+    fretRange.value = clampFretRange({
+      from: Math.min(from, Math.max(0, p.minFret - 1)),
+      to: Math.max(to, Math.min(MAX_FRETS, p.maxFret + 1)),
+    })
+  }
 })
 
 // --- Звук по клику ---
@@ -133,6 +155,7 @@ const livePositions = computed(() =>
       :labels="labels"
       :live-midi="liveMidi"
       :live-held="pitch?.held ?? false"
+      :position="selectedPosition"
       @play="playMidi"
     />
 
@@ -144,7 +167,20 @@ const livePositions = computed(() =>
       <li><i class="legend__dot legend__dot--live" />Звучит сейчас</li>
     </ul>
 
-    <ScaleExercise :tonic="theory.tonic" :scale-id="scaleId" :range="fretRange" />
+    <PositionPicker
+      v-model:position="position"
+      v-model:system="positionSystem"
+      :positions="positions"
+      :caged-available="cagedAvailable"
+    />
+
+    <ScaleExercise
+      :tonic="theory.tonic"
+      :scale-id="scaleId"
+      :range="fretRange"
+      :position="selectedPosition"
+      :system="positionSystem"
+    />
 
     <div class="bottom">
       <ScaleSummary

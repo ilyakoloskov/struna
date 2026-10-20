@@ -55,8 +55,18 @@ describe('toTheoryQuery', () => {
         scaleId: 'dorian',
         labels: 'intervals',
         fretRange: { from: 3, to: 12 },
+        position: 0,
+        positionSystem: 'boxes',
       }),
     ).toEqual({ key: 'F#', mode: 'dorian', labels: 'intervals', frets: '3-12' })
+  })
+
+  it('позиция и система', () => {
+    expect(parseTheoryQuery({ pos: '2', sys: 'caged' })).toEqual({
+      position: 2,
+      positionSystem: 'caged',
+    })
+    expect(parseTheoryQuery({ pos: '9', sys: 'x' })).toEqual({})
   })
 
   it('туда и обратно', () => {
@@ -65,6 +75,8 @@ describe('toTheoryQuery', () => {
       scaleId: 'blues' as const,
       labels: 'degrees' as const,
       fretRange: { from: 0, to: 24 },
+      position: 3,
+      positionSystem: 'caged' as const,
     }
     expect(parseTheoryQuery(toTheoryQuery(selection))).toEqual(selection)
   })

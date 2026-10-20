@@ -3,11 +3,19 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { FretRange } from '@/domain/theory/fretboard'
 import { toAscii, type SpelledNote } from '@/domain/theory/notes'
+import type { ScalePosition, PositionSystem } from '@/domain/theory/positions'
 import type { ScaleId } from '@/domain/theory/scales'
 import { EXERCISE_DEFAULT_BPM } from '@/game/exercise'
 
 // Связь теории с тренажёром: сыграть выбранную гамму вверх-вниз в диапазоне ладов с проверкой
-const props = defineProps<{ tonic: SpelledNote; scaleId: ScaleId; range: FretRange }>()
+const props = defineProps<{
+  tonic: SpelledNote
+  scaleId: ScaleId
+  range: FretRange
+  /** Выбранная позиция — упражнение играет ровно её */
+  position: ScalePosition | null
+  system: PositionSystem
+}>()
 
 const BPM_STEPS = [60, 80, 100, 120, 140]
 const bpm = ref(EXERCISE_DEFAULT_BPM)
@@ -18,13 +26,21 @@ const to = computed(() => ({
   query: {
     key: toAscii(props.tonic),
     mode: props.scaleId,
-    frets: `${props.range.from}-${props.range.to}`,
+    ...(props.position
+      ? { pos: String(props.position.number), sys: props.system }
+      : { frets: `${props.range.from}-${props.range.to}` }),
     bpm: String(bpm.value),
   },
 }))
 
 /** Широкий диапазон — гамма растягивается по всему грифу; подсказываем позицию */
-const wide = computed(() => props.range.to - props.range.from > 5)
+const wide = computed(() => !props.position && props.range.to - props.range.from > 5)
+
+const where = computed(() =>
+  props.position
+    ? `в позиции «${props.position.label}»`
+    : `в ладах ${props.range.from}–${props.range.to}`,
+)
 </script>
 
 <template>
@@ -32,11 +48,12 @@ const wide = computed(() => props.range.to - props.range.from > 5)
     <div class="exercise__text">
       <span class="caps-label">Упражнение</span>
       <p>
-        Сыграй гамму вверх и вниз восьмыми под метроном в ладах {{ range.from }}–{{ range.to }} —
-        распознавание проверит каждую ноту.
+        Сыграй гамму вверх и вниз восьмыми под метроном {{ where }} — распознавание проверит каждую
+        ноту.
       </p>
       <p v-if="wide" class="exercise__hint">
-        Совет: сузь диапазон ладов до позиции (например, 5–9), чтобы играть без переездов.
+        Совет: выбери позицию выше или сузь диапазон ладов (например, 5–9), чтобы играть без
+        переездов.
       </p>
     </div>
     <div class="exercise__controls">

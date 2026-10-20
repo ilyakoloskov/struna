@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { Tuning } from '@/domain/music/tunings'
 import { fretMarker, type FretRange } from '@/domain/theory/fretboard'
 import { formatNote, octaveOf } from '@/domain/theory/notes'
+import { cellKey, type ScalePosition } from '@/domain/theory/positions'
 import { describePitch, pitchLabel, type LabelKind, type Scale } from '@/domain/theory/scales'
 
 // Гриф: ноты гаммы под текущий строй, цвет по роли, живая подсветка звучащей ноты.
@@ -15,7 +16,14 @@ const props = defineProps<{
   /** Звучащая нота (целый MIDI) — подсвечивается во всех позициях */
   liveMidi: number | null
   liveHeld?: boolean
+  /** Выбранная позиция гаммы: остальные ноты приглушаются, ноты формы CAGED выделяются */
+  position?: ScalePosition | null
 }>()
+
+const inPosition = computed(() =>
+  props.position ? new Set(props.position.cells.map(cellKey)) : null,
+)
+const inShape = computed(() => new Set((props.position?.shape ?? []).map(cellKey)))
 
 const emit = defineEmits<{ play: [midi: number] }>()
 
@@ -30,9 +38,12 @@ const rows = computed(() =>
     cells: frets.value.map((fret) => {
       const midi = string.midi + fret
       const pitch = describePitch(props.scale, midi)
+      const key = cellKey({ stringIndex: props.tuning.strings.length - string.number, fret })
       return {
         fret,
         midi,
+        dim: inPosition.value !== null && !inPosition.value.has(key),
+        shape: inShape.value.has(key),
         role: pitch.role,
         label: pitchLabel(pitch, props.labels),
         name: `${formatNote(pitch.note)}${octaveOf(pitch.note, midi)}`,
@@ -88,6 +99,8 @@ const openNames = computed(() => props.tuning.strings.map((s) => `${s.name}${s.o
                     'dot--live': cell.midi === liveMidi,
                     'dot--held': liveHeld,
                     'dot--text': labels === 'intervals',
+                    'dot--dim': cell.dim && cell.midi !== liveMidi,
+                    'dot--shape': cell.shape,
                   },
                 ]"
               >
@@ -255,6 +268,18 @@ const openNames = computed(() => props.tuning.strings.map((s) => `${s.name}${s.o
 .dot--text {
   font-size: 10.5px;
   text-transform: uppercase;
+}
+
+/* Ноты вне выбранной позиции */
+.dot--dim {
+  opacity: 0.16;
+  box-shadow: none;
+}
+
+/* Ноты формы аккорда CAGED */
+.dot--shape {
+  outline: 2px solid color-mix(in srgb, var(--dot-color) 70%, white);
+  outline-offset: 3px;
 }
 
 /* Звучащая нота вне гаммы */

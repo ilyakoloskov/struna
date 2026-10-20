@@ -2,6 +2,7 @@ import { pitchClass } from '@/domain/music/pitch'
 import type { Tuning } from '@/domain/music/tunings'
 import type { FretRange } from '@/domain/theory/fretboard'
 import { chroma, formatNote } from '@/domain/theory/notes'
+import { positionRun, type ScalePosition } from '@/domain/theory/positions'
 import type { Scale } from '@/domain/theory/scales'
 import { assignFingering } from '@/domain/tracks/fingering'
 import type { Beat, FrettedNote, NoteEvent, Song } from '@/domain/tracks/types'
@@ -52,6 +53,42 @@ export function createScaleExercise(
 ): Exercise | null {
   const run = scaleRun(tuning, scale, range)
   if (run.length < 2) return null
+  const name = `${formatNote(scale.tonic)} ${scale.type.title} · лады ${range.from}–${range.to}`
+  const exercise = buildExercise(run, bpm, name)
+  return {
+    ...exercise,
+    notes: assignFingering(exercise.song.tracks[0]!.notes, tuning, {
+      minFret: range.from,
+      maxFret: range.to,
+    }),
+  }
+}
+
+/** Упражнение в позиции (бокс или форма CAGED): ровно её клетки вверх и вниз */
+export function createPositionExercise(
+  tuning: Tuning,
+  scale: Scale,
+  position: ScalePosition,
+  bpm = EXERCISE_DEFAULT_BPM,
+): Exercise | null {
+  const up = positionRun(tuning, position)
+  if (up.length < 2) return null
+  const items = [...up, ...up.slice(0, -1).reverse()]
+  const name = `${formatNote(scale.tonic)} ${scale.type.title} · ${position.label.toLowerCase()}`
+  const exercise = buildExercise(
+    items.map((i) => i.midi),
+    bpm,
+    name,
+  )
+  const events = exercise.song.tracks[0]!.notes
+  return {
+    ...exercise,
+    notes: events.map((note, i) => ({ ...note, ...items[i]!.cell })),
+  }
+}
+
+/** Песня упражнения: такт на подготовку, восьмые, длинная последняя нота */
+function buildExercise(run: readonly number[], bpm: number, name: string): { song: Song } {
   const beat = 60 / bpm
   const step = beat / 2
   // Такт тишины в начале — отсчёт транспорта уже даёт вступление, а это время на подготовку руки
@@ -71,7 +108,6 @@ export function createScaleExercise(
     time: i * beat,
     downbeat: i % 4 === 0,
   }))
-  const name = `${formatNote(scale.tonic)} ${scale.type.title} · лады ${range.from}–${range.to}`
   return {
     song: {
       name,
@@ -93,7 +129,6 @@ export function createScaleExercise(
         },
       ],
     },
-    notes: assignFingering(events, tuning, { minFret: range.from, maxFret: range.to }),
   }
 }
 
@@ -103,6 +138,8 @@ export function exerciseTrackId(
   mode: string,
   range: FretRange,
   tuningId: string,
+  position?: { number: number; system: string },
 ): string {
-  return `exercise:${key}:${mode}:${range.from}-${range.to}:${tuningId}`
+  const where = position ? `${position.system}${position.number}` : `${range.from}-${range.to}`
+  return `exercise:${key}:${mode}:${where}:${tuningId}`
 }
