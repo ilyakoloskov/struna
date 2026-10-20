@@ -18,6 +18,8 @@ export type InputStatus = 'idle' | 'starting' | 'running' | 'needs-gesture' | 'e
 // Состояние общее для всех экранов: вход один на приложение
 const status = ref<InputStatus>('idle')
 const errorCode = ref<AudioInputErrorCode | null>(null)
+/** Техническая причина ошибки от браузера («NotFoundError: Requested device not found») */
+const errorDetail = ref<string | null>(null)
 const devices = shallowRef<InputDevice[]>([])
 const peakDb = ref(SILENCE_DB)
 let users = 0
@@ -66,6 +68,7 @@ export function useAudioInput({ autoStart = true }: UseAudioInputOptions = {}) {
     if (status.value === 'starting') return
     status.value = 'starting'
     errorCode.value = null
+    errorDetail.value = null
     try {
       try {
         await audioInput.start(inputDeviceId.value, range.value)
@@ -84,6 +87,9 @@ export function useAudioInput({ autoStart = true }: UseAudioInputOptions = {}) {
     } catch (error) {
       status.value = 'error'
       errorCode.value = error instanceof AudioInputError ? error.code : 'unknown'
+      errorDetail.value = error instanceof Error ? error.message : String(error)
+      // Список устройств мог измениться (например, система закрыла доступ)
+      await refreshDevices()
     }
   }
 
@@ -114,8 +120,9 @@ export function useAudioInput({ autoStart = true }: UseAudioInputOptions = {}) {
     if (audioInput.isRunning) audioInput.setRange(value)
   })
 
+  // Сменили устройство — переподключаемся (и после ошибки: выбор другой карты — новая попытка)
   watch(inputDeviceId, () => {
-    if (audioInput.isRunning) void start()
+    if (audioInput.isRunning || status.value === 'error') void start()
   })
 
   onMounted(async () => {
@@ -143,6 +150,7 @@ export function useAudioInput({ autoStart = true }: UseAudioInputOptions = {}) {
   return {
     status: readonly(status),
     errorCode: readonly(errorCode),
+    errorDetail: readonly(errorDetail),
     devices,
     peakDb: readonly(peakDb),
     selectedDeviceId: inputDeviceId,

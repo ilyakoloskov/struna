@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import PageContainer from '@/components/layout/PageContainer.vue'
+import InputErrorHelp from '@/components/ui/InputErrorHelp.vue'
 import MobileNotice from '@/components/ui/MobileNotice.vue'
 import SelectField from '@/components/ui/SelectField.vue'
 import type { SelectOption } from '@/components/ui/types'
@@ -72,13 +73,6 @@ const centsText = computed(() =>
 )
 
 const isRunning = computed(() => input.status.value === 'running')
-
-const ERROR_TEXT: Record<string, string> = {
-  denied: 'Доступ к звуковому входу запрещён. Разреши его в настройках сайта и попробуй снова.',
-  'not-found': 'Устройство ввода не найдено. Подключи звуковую карту и попробуй снова.',
-  unsupported: 'Браузер не поддерживает захват звука. Открой STRUNA в Chrome или Edge.',
-  unknown: 'Не удалось открыть звуковой вход.',
-}
 </script>
 
 <template>
@@ -89,7 +83,7 @@ const ERROR_TEXT: Record<string, string> = {
           v-model="deviceId"
           label="Устройство ввода"
           :options="deviceOptions"
-          :disabled="!isRunning"
+          :disabled="input.status.value === 'starting'"
         />
         <SelectField v-model="tuningId" label="Строй" :options="TUNING_OPTIONS" accent />
         <CustomTuningEditor v-if="tuningId === 'custom'" v-model="customModel" />
@@ -103,7 +97,7 @@ const ERROR_TEXT: Record<string, string> = {
       <section class="tuner__main" aria-live="off">
         <div v-if="!isRunning" class="connect">
           <template v-if="input.status.value === 'error'">
-            <p class="connect__text">{{ ERROR_TEXT[input.errorCode.value ?? 'unknown'] }}</p>
+            <InputErrorHelp :code="input.errorCode.value" :detail="input.errorDetail.value" />
             <button
               v-if="input.errorCode.value !== 'unsupported'"
               type="button"

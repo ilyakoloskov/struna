@@ -24,7 +24,7 @@ export interface PitchRange {
   a4: number
 }
 
-export type AudioInputErrorCode = 'denied' | 'not-found' | 'unsupported' | 'unknown'
+export type AudioInputErrorCode = 'denied' | 'not-found' | 'busy' | 'unsupported' | 'unknown'
 
 export class AudioInputError extends Error {
   constructor(
@@ -212,15 +212,22 @@ export class AudioInput {
   }
 }
 
-function toInputError(error: unknown): AudioInputError {
-  const name = error instanceof DOMException ? error.name : ''
+/** Код ошибки по исключению getUserMedia; сообщение — техническое «Имя: текст» браузера для диагностики */
+export function toInputError(error: unknown): AudioInputError {
+  const name = error instanceof DOMException || error instanceof Error ? error.name : ''
+  const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
   if (name === 'NotAllowedError' || name === 'SecurityError') {
-    return new AudioInputError('denied', 'Доступ к звуковому входу запрещён')
+    return new AudioInputError('denied', detail)
   }
   if (name === 'NotFoundError' || name === 'OverconstrainedError') {
-    return new AudioInputError('not-found', 'Устройство ввода не найдено')
+    return new AudioInputError('not-found', detail)
   }
-  return new AudioInputError('unknown', error instanceof Error ? error.message : String(error))
+  // Устройство есть, но открыть не удалось: занято другой программой в монопольном режиме
+  // или заблокировано драйвером/системой
+  if (name === 'NotReadableError' || name === 'AbortError') {
+    return new AudioInputError('busy', detail)
+  }
+  return new AudioInputError('unknown', detail)
 }
 
 /** Один вход на всё приложение: тюнер, живой гриф и игра делят его */

@@ -6,6 +6,7 @@ import CalibrationPanel from '@/components/settings/CalibrationPanel.vue'
 import CustomTuningEditor from '@/components/tuner/CustomTuningEditor.vue'
 import LevelMeter from '@/components/tuner/LevelMeter.vue'
 import MobileNotice from '@/components/ui/MobileNotice.vue'
+import InputErrorHelp from '@/components/ui/InputErrorHelp.vue'
 import SelectField from '@/components/ui/SelectField.vue'
 import { TUNING_OPTIONS } from '@/components/ui/tuningOptions'
 import type { SelectOption } from '@/components/ui/types'
@@ -63,7 +64,12 @@ const speed = computed({
           v-model="deviceId"
           label="Устройство ввода"
           :options="deviceOptions"
-          :disabled="input.status.value !== 'running'"
+          :disabled="input.status.value === 'starting'"
+        />
+        <InputErrorHelp
+          v-if="input.status.value === 'error'"
+          :code="input.errorCode.value"
+          :detail="input.errorDetail.value"
         />
         <LevelMeter :peak-db="input.peakDb.value" :active="input.status.value === 'running'" />
         <button
