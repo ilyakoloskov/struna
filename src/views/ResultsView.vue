@@ -102,10 +102,10 @@ const breakdown = computed(() => {
       </div>
     </div>
 
-    <section v-else class="missing">
+    <section v-else-if="store.loaded" class="missing">
       <div class="caps-label">Результаты</div>
       <h1 class="summary__title">Сессия не найдена</h1>
-      <p class="summary__meta">Результаты пока хранятся только до перезагрузки страницы.</p>
+      <p class="summary__meta">Возможно, трек с этой сессией удалён из библиотеки.</p>
       <RouterLink class="btn btn--primary" :to="{ name: 'library' }">В библиотеку</RouterLink>
     </section>
   </PageContainer>

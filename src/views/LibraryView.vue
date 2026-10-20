@@ -15,10 +15,17 @@ import { pluralRu } from '@/domain/ru'
 import { assignFingering, countUnplayable } from '@/domain/tracks/fingering'
 import { MidiImportError } from '@/domain/tracks/midiImport'
 import { guitarTrackOf, useLibraryStore } from '@/stores/library'
+import { useResultsStore } from '@/stores/results'
 import { useSettingsStore } from '@/stores/settings'
 
 const library = useLibraryStore()
-const { tracks, selected, selectedId } = storeToRefs(library)
+const { tracks, selected, selectedId, loaded } = storeToRefs(library)
+const results = useResultsStore()
+
+async function removeTrack(id: string) {
+  await library.remove(id)
+  results.forgetTrack(id)
+}
 const settings = useSettingsStore()
 const { tuning, tuningId } = storeToRefs(settings)
 
@@ -94,8 +101,10 @@ const unplayable = computed(() => countUnplayable(frettedNotes.value))
       />
     </header>
 
+    <p v-if="!loaded" class="loading" role="status">Загружаю библиотеку…</p>
+
     <MidiDropZone
-      v-if="!tracks.length"
+      v-else-if="!tracks.length"
       :error="importError"
       @files="onFiles"
       @demo="library.addDemo()"
@@ -110,7 +119,8 @@ const unplayable = computed(() => countUnplayable(frettedNotes.value))
           :selected="track.id === selectedId"
           :tuning-label="tuning.label"
           @select="selectedId = track.id"
-          @remove="library.remove(track.id)"
+          :best="results.bestScore(track.id)"
+          @remove="removeTrack(track.id)"
         />
       </aside>
 
@@ -201,6 +211,10 @@ const unplayable = computed(() => countUnplayable(frettedNotes.value))
   font-weight: 800;
   font-size: clamp(32px, 4vw, 48px);
   color: var(--color-text-strong);
+}
+
+.loading {
+  color: var(--color-text-muted);
 }
 
 .layout {

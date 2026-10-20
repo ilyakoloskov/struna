@@ -1,14 +1,18 @@
-/* Вариативные шрифты, лицензия OFL (тексты лицензий рядом с файлами) */
+/*
+ * Вариативные шрифты, лицензия OFL (тексты лицензий рядом с файлами).
+ * Подмножество латиница + кириллица в woff2 (из оригинальных TTF в design/html через fonttools/pyftsubset):
+ * Unbounded 778 → 98 КБ, Manrope 165 → 32 КБ. Символов ♯ ♭ в шрифтах нет — их рисует системный.
+ */
 @font-face {
   font-family: 'Unbounded';
-  src: url('@/assets/fonts/Unbounded.ttf') format('truetype');
-  font-weight: 100 900;
+  src: url('@/assets/fonts/Unbounded.woff2') format('woff2');
+  font-weight: 200 900;
   font-display: swap;
 }
 
 @font-face {
   font-family: 'Manrope';
-  src: url('@/assets/fonts/Manrope.ttf') format('truetype');
-  font-weight: 100 900;
+  src: url('@/assets/fonts/Manrope.woff2') format('woff2');
+  font-weight: 200 800;
   font-display: swap;
 }

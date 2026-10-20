@@ -16,6 +16,8 @@ import { useAudioInput } from '@/composables/useAudioInput'
 import { useGameSession } from '@/composables/useGameSession'
 import { useLaneRenderer, type LaneSource } from '@/composables/useLaneRenderer'
 import { useTransport } from '@/composables/useTransport'
+import { useWakeLock } from '@/composables/useWakeLock'
+import MobileNotice from '@/components/ui/MobileNotice.vue'
 import { createDemoSong } from '@/domain/tracks/demoSong'
 import { assignFingering } from '@/domain/tracks/fingering'
 import type { Beat, Song } from '@/domain/tracks/types'
@@ -75,7 +77,8 @@ const source = computed<LaneSource | null>(() => {
 })
 const chartNotes = computed(() => source.value?.notes ?? [])
 
-const notFound = computed(() => !isTest.value && !song.value)
+// Библиотека грузится из IndexedDB — «не найден» говорим только после загрузки
+const notFound = computed(() => !isTest.value && library.loaded && !song.value)
 
 // --- Часы: тестовый режим — свои, трек — по транспорту (часы AudioContext) ---
 
@@ -142,12 +145,15 @@ const duration = computed(() =>
 const phase = computed<Phase>(() => {
   if (isTest.value) return testRunning.value ? 'playing' : 'paused'
   const state = transport.state.value
-  if (state === 'idle' || state === 'loading') return 'loading'
+  if (!library.loaded || state === 'idle' || state === 'loading') return 'loading'
   if (state === 'counting' || state === 'playing') return 'playing'
   if (state === 'paused' && position.value >= duration.value - 0.05) return 'ended'
   if (state === 'paused') return 'paused'
   return 'ready'
 })
+
+// Экран не гаснет, пока идёт игра
+useWakeLock(computed(() => phase.value === 'playing'))
 
 const loadPercent = computed(() => {
   const { loaded, total } = transport.progress.value
@@ -323,6 +329,7 @@ function exit() {
     />
 
     <GameOverlay v-else-if="phase === 'ready'" :title="title" :text="inputHint">
+      <MobileNotice v-if="!autoplay" />
       <button
         v-if="!autoplay && input.status.value !== 'running'"
         type="button"

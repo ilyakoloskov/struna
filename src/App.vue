@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
+import UpdateToast from '@/components/layout/UpdateToast.vue'
 
 const route = useRoute()
 const isFullscreen = computed(() => route.meta.fullscreen === true)
@@ -17,6 +18,7 @@ const isFullscreen = computed(() => route.meta.fullscreen === true)
         </Transition>
       </RouterView>
     </main>
+    <UpdateToast v-if="!isFullscreen" />
   </div>
 </template>
 

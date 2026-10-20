@@ -2,8 +2,10 @@
 import { RouterLink, useRoute } from 'vue-router'
 import AppLogo from './AppLogo.vue'
 import { NAV_ITEMS, isSectionActive } from './navigation'
+import { useInstallPrompt } from '@/composables/useInstallPrompt'
 
 const route = useRoute()
+const { canInstall, installed, install } = useInstallPrompt()
 </script>
 
 <template>
@@ -11,6 +13,9 @@ const route = useRoute()
     <AppLogo />
 
     <div class="header__right">
+      <button v-if="canInstall && !installed" type="button" class="install" @click="install">
+        Установить
+      </button>
       <nav class="nav" aria-label="Основная навигация">
         <RouterLink
           v-for="item in NAV_ITEMS"
@@ -61,6 +66,17 @@ const route = useRoute()
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.install {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent-bg);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent-text);
 }
 
 .nav {

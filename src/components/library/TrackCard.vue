@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { formatClock } from '@/domain/time'
+import { formatScore } from '@/game/score'
 import type { LibraryTrack } from '@/stores/library'
 import { guitarTrackOf } from '@/stores/library'
 
 // Карточка трека в библиотеке
-defineProps<{ track: LibraryTrack; selected: boolean; tuningLabel: string }>()
+defineProps<{
+  track: LibraryTrack
+  selected: boolean
+  tuningLabel: string
+  /** Лучший счёт по треку */
+  best: number | null
+}>()
 const emit = defineEmits<{ select: []; remove: [] }>()
 </script>
 
@@ -16,7 +23,8 @@ const emit = defineEmits<{ select: []; remove: [] }>()
         {{ tuningLabel }} · {{ formatClock(track.song.duration) }} · {{ track.song.bpm }} bpm
       </span>
       <span class="card__meta">
-        {{ guitarTrackOf(track)?.notes.length ?? 0 }} нот гитары · рекорд —
+        {{ guitarTrackOf(track)?.notes.length ?? 0 }} нот гитары · рекорд
+        {{ best === null ? '—' : formatScore(best) }}
       </span>
     </button>
     <button

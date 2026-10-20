@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import PageContainer from '@/components/layout/PageContainer.vue'
+import MobileNotice from '@/components/ui/MobileNotice.vue'
 import SelectField from '@/components/ui/SelectField.vue'
 import type { SelectOption } from '@/components/ui/types'
 import { TUNING_OPTIONS } from '@/components/ui/tuningOptions'
@@ -92,6 +93,7 @@ const ERROR_TEXT: Record<string, string> = {
         <SelectField v-model="tuningId" label="Строй" :options="TUNING_OPTIONS" accent />
         <CustomTuningEditor v-if="tuningId === 'custom'" v-model="customModel" />
         <LevelMeter :peak-db="input.peakDb.value" :active="isRunning" />
+        <MobileNotice />
         <button type="button" class="calibrate" disabled title="Появится на этапе 8">
           Калибровка задержки
         </button>

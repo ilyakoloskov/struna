@@ -21,7 +21,7 @@
 - Игровая дорожка: WebGL через Three.js (перспектива, свечение/bloom, частицы, 60 fps)
 - Интерфейс поверх игры (меню, счёт, комбо, экраны) — обычные Vue-компоненты
 - PWA: `vite-plugin-pwa`
-- Локальное хранение (библиотека треков, рекорды, калибровка, настройки): IndexedDB через Dexie или idb-keyval — предложи
+- Локальное хранение: библиотека треков и рекорды — IndexedDB через Dexie; настройки и калибровка — localStorage (маленькие, нужны синхронно на старте)
 - Музыкальная теория: библиотека `tonal` (@tonaljs) или собственный модуль — предложи и обоснуй
 - Тесты: Vitest для всей чистой логики (сравнение нот, очки, тайминги, расчёт ладов, теория)
 
@@ -182,7 +182,7 @@
 - Node 22.22.3 (`.nvmrc`); зависимости ставить через `npx npm@11 install` (у npm 10 баг arborist на peer-зависимостях jsdom)
 - Шаблон create-vue: Vite 8, Vue 3.5, TS 6 (strict + noUncheckedIndexedAccess), Pinia, vue-router, Vitest + jsdom, ESLint + Prettier; oxlint убран
 - Токены — `src/styles/tokens.css` (CSS-переменные: фоны, текст, цвета струн `--string-1..7`, оценки, шрифты, радиусы, движение); `prefers-reduced-motion` обнуляет длительности
-- Шрифты Unbounded/Manrope лежат локально в `src/assets/fonts` (нужно для офлайна). TODO к этапу 7: перевести в woff2 с подмножеством latin+cyrillic (сейчас Unbounded.ttf весит 778 КБ)
+- Шрифты Unbounded/Manrope лежат локально в `src/assets/fonts` (нужно для офлайна); на этапе 7 переведены в woff2-подмножество
 - Маршруты — `src/router/routes.ts`, все ленивые; `meta.fullscreen` скрывает шапку (экран игры); `/theory` — вложенный layout с чипами, query пробрасывается между вкладками
 - Навигация — `src/components/layout/navigation.ts` («Играть» активно на /library, /play, /results); настройки — иконка в шапке
 - Тесты: маршруты, навигация, layout (18 шт.)
@@ -283,4 +283,26 @@
   дальтонизме) проходит, и струны на графиках всегда подписаны — оставлено как есть
 - Проверено в Chrome: автоигра доходит до результатов; поддельный микрофон — удары распознаются и судятся
 - Ручная проверка: `docs/checklists/stage-6-game.md`
+
+### Этап 7. PWA и хранение — реализован, ждёт ручной проверки (установка, офлайн на своём железе)
+- Зависимости: `vite-plugin-pwa` 2.0.0 + `workbox-window` 7.4.1, `dexie` 4.4.6, dev — `fake-indexeddb` 6.2.5 (тесты
+  хранения на настоящем IndexedDB). Версии закреплены точно
+- Решения пользователя: Dexie; настройки остаются в localStorage
+- `src/storage/`: `db.ts` (StrunaDatabase: tracks `id, addedAt`; results `id, trackId, finishedAt, [trackId+score]`;
+  новые версии схемы — только добавлением `this.version(N)`), `repository.ts` (база параметром — тестируемо),
+  удаление трека удаляет его результаты; `navigator.storage.persist()` при первом сохранении
+- Трек хранится разобранным + исходные байты файла (`source`, только в базе — для повторного разбора и Guitar Pro)
+- Сторы `library` и `results` грузятся из IndexedDB при старте (`main.ts`), флаг `loaded`; экран игры не говорит
+  «трек не найден», пока библиотека не загрузилась; карточки показывают рекорд
+- PWA: манифест (fullscreen → standalone, landscape, тёмная тема), иконки из `design/icon/*.svg`, отрендерены в PNG
+  через Chrome (`public/pwa-*.png`, `apple-touch-icon.png`); Workbox precache всей оболочки (~1.4 МБ, 57 файлов:
+  чанки, ворклет, шрифты), `navigateFallback`; обновление по кнопке (`registerType: 'prompt'`, `UpdateToast`, вне игры)
+- Сэмплы инструментов офлайн — кэш smplr (`struna-samples`), отдельно от service worker: трек, открытый онлайн хотя бы
+  раз, играет без сети
+- Шрифты: woff2-подмножество латиница + кириллица (pyftsubset, ось wght сохранена): Unbounded 778 → 98 КБ,
+  Manrope 165 → 32 КБ; ♯ ♭ в шрифтах нет — рисует системный
+- `useWakeLock` (во время игры), `useInstallPrompt` (кнопка «Установить» в шапке), `MobileNotice` (тюнер и старт игры)
+- Проверено в Chrome: SW управляет страницей; без сети открываются все разделы, треки из IndexedDB, демо играет
+  с кэшированными сэмплами, результат и рекорд переживают перезагрузку офлайн
+- Ручная проверка: `docs/checklists/stage-7-pwa.md`
 
