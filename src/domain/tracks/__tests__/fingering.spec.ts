@@ -112,3 +112,29 @@ describe('groupChords', () => {
     expect(groups.map((g) => g.map((n) => n.midi))).toEqual([[40, 52], [45]])
   })
 })
+
+describe('chartNotesFor', () => {
+  const track = {
+    index: 0,
+    name: 'G',
+    instrument: { program: 29, name: 'overdriven guitar', family: 'guitar', percussion: false },
+    notes: melody([45, 50]),
+    // В файле A2 сыграна на 6-й струне 5-м ладу, D3 — на 5-й 5-м
+    positions: [
+      { stringIndex: 0, fret: 5 },
+      { stringIndex: 1, fret: 5 },
+    ],
+    tuning: [40, 45, 50, 55, 59, 64],
+  }
+
+  it('строй совпадает — позиции из файла как есть', async () => {
+    const { chartNotesFor } = await import('../fingering')
+    expect(tab(chartNotesFor(track, six))).toEqual(['6:5', '5:5'])
+  })
+
+  it('строй другой — расстановка под выбранный', async () => {
+    const { chartNotesFor } = await import('../fingering')
+    // В 7-струнном стандарте A2 — открытая 5-я
+    expect(tab(chartNotesFor(track, seven), seven)).toEqual(['5:0', '4:0'])
+  })
+})

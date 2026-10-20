@@ -46,8 +46,9 @@ export default defineConfig({
     }),
   ],
   build: {
-    // Экран игры лениво тянет three + postprocessing (~600 КБ, ~150 КБ gzip) — это ожидаемо
-    chunkSizeWarningLimit: 700,
+    // Ленивые тяжёлые чанки ожидаемы: экран игры (three + postprocessing ~600 КБ)
+    // и alphaTab для Guitar Pro (~1.2 МБ, ~290 КБ gzip, только при открытии GP-файла)
+    chunkSizeWarningLimit: 1300,
   },
   resolve: {
     alias: {

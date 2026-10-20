@@ -103,3 +103,22 @@ export function nearestStringIndex(tuning: Tuning, midi: number): number {
   })
   return best
 }
+
+/** Строй совпадает с набором MIDI-нот (от низкой струны к высокой) */
+export function tuningMatches(tuning: Tuning, midis: readonly number[]): boolean {
+  return (
+    tuning.strings.length === midis.length && tuning.strings.every((s, i) => s.midi === midis[i])
+  )
+}
+
+/**
+ * Какой строй выбрать под строй из файла: пресет, если совпадает, иначе свой строй
+ * (если 6 или 7 струн в допустимом диапазоне), иначе null.
+ */
+export function tuningSelectionFor(
+  midis: readonly number[],
+): { tuningId: TuningId; customMidis?: number[] } | null {
+  const preset = TUNING_PRESETS.find((t) => tuningMatches(t, midis))
+  if (preset) return { tuningId: preset.id }
+  return isValidCustomMidis([...midis]) ? { tuningId: 'custom', customMidis: [...midis] } : null
+}

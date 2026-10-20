@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import MidiDropZone from '@/components/library/MidiDropZone.vue'
 import NotesTable from '@/components/library/NotesTable.vue'
+import TabView from '@/components/library/TabView.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import TrackCard from '@/components/library/TrackCard.vue'
 import TransportBar from '@/components/library/TransportBar.vue'
 import SelectField from '@/components/ui/SelectField.vue'
@@ -12,11 +14,15 @@ import { TUNING_OPTIONS } from '@/components/ui/tuningOptions'
 import type { SelectOption } from '@/components/ui/types'
 import { useTransport } from '@/composables/useTransport'
 import { pluralRu } from '@/domain/ru'
-import { assignFingering, countUnplayable } from '@/domain/tracks/fingering'
+import { formatNote } from '@/domain/music/pitch'
+import { tuningMatches, tuningSelectionFor } from '@/domain/music/tunings'
+import { chartNotesFor, countUnplayable } from '@/domain/tracks/fingering'
+import { GpImportError } from '@/domain/tracks/gpImport'
 import { MidiImportError } from '@/domain/tracks/midiImport'
 import { guitarTrackOf, useLibraryStore } from '@/stores/library'
 import { useResultsStore } from '@/stores/results'
 import { useSettingsStore } from '@/stores/settings'
+import { repository } from '@/storage'
 
 const library = useLibraryStore()
 const { tracks, selected, selectedId, loaded } = storeToRefs(library)
@@ -30,6 +36,27 @@ const settings = useSettingsStore()
 const { tuning, tuningId } = storeToRefs(settings)
 
 const transport = useTransport()
+
+// Вид партии для Guitar Pro: список нот или табулатура
+type PartView = 'notes' | 'tab'
+const VIEW_OPTIONS: SelectOption<PartView>[] = [
+  { value: 'tab', label: 'Табулатура' },
+  { value: 'notes', label: 'Ноты' },
+]
+const view = ref<PartView>('tab')
+
+// Исходный файл для табулатуры — из IndexedDB, только для Guitar Pro
+const tabSource = shallowRef<ArrayBuffer | null>(null)
+watch(
+  () => selected.value?.id,
+  async (id) => {
+    tabSource.value = null
+    if (!id || selected.value?.format !== 'gp') return
+    const source = await repository.getTrackSource(id)
+    if (selected.value?.id === id) tabSource.value = source ?? null
+  },
+  { immediate: true },
+)
 const importError = ref<string | null>(null)
 const follow = ref(true)
 
@@ -40,7 +67,7 @@ async function onFiles(files: File[]) {
       await library.importFile(file)
     } catch (error) {
       importError.value =
-        error instanceof MidiImportError
+        error instanceof MidiImportError || error instanceof GpImportError
           ? `${file.name}: ${error.message}`
           : `${file.name}: не удалось прочитать файл`
     }
@@ -78,10 +105,29 @@ const guitarIndex = computed({
 })
 
 // Позиции на грифе пересчитываются при смене строя или дорожки
-const frettedNotes = computed(() => {
-  const guitar = selected.value ? guitarTrackOf(selected.value) : undefined
-  return guitar ? assignFingering(guitar.notes, tuning.value) : []
+const guitarTrack = computed(() => (selected.value ? guitarTrackOf(selected.value) : undefined))
+
+// Позиции из файла (Guitar Pro), если строй совпадает, иначе — расстановка под выбранный строй
+const frettedNotes = computed(() =>
+  guitarTrack.value ? chartNotesFor(guitarTrack.value, tuning.value) : [],
+)
+
+/** Строй дорожки в файле отличается от выбранного — предлагаем переключиться */
+const fileTuning = computed(() => {
+  const midis = guitarTrack.value?.tuning
+  if (!midis || tuningMatches(tuning.value, midis)) return null
+  return {
+    notes: midis.map((m) => formatNote(m, 'sharp')).join(' '),
+    selection: tuningSelectionFor(midis),
+  }
 })
+
+function useFileTuning() {
+  const selection = fileTuning.value?.selection
+  if (!selection) return
+  if (selection.customMidis) settings.setCustomMidis(selection.customMidis)
+  tuningId.value = selection.tuningId
+}
 const unplayable = computed(() => countUnplayable(frettedNotes.value))
 </script>
 
@@ -158,6 +204,19 @@ const unplayable = computed(() => countUnplayable(frettedNotes.value))
             :options="TUNING_OPTIONS"
           />
         </div>
+        <p v-if="fileTuning" class="detail__tuning" role="status">
+          <span>
+            В файле строй {{ fileTuning.notes }} — позиции пересчитаны под {{ tuning.label }}.
+          </span>
+          <button
+            v-if="fileTuning.selection"
+            type="button"
+            class="detail__tuning-btn"
+            @click="useFileTuning"
+          >
+            Играть в строе файла
+          </button>
+        </p>
         <p v-if="unplayable" class="detail__warning" role="status">
           {{ unplayable }} {{ pluralRu(unplayable, 'нота', 'ноты', 'нот') }} не
           {{ unplayable === 1 ? 'помещается' : 'помещаются' }} в строй {{ tuning.label }} — выбери
@@ -178,13 +237,31 @@ const unplayable = computed(() => countUnplayable(frettedNotes.value))
         />
 
         <div class="notes-head">
-          <span class="caps-label"> Ноты гитарной партии · {{ frettedNotes.length }} </span>
-          <label class="follow">
+          <SegmentedControl
+            v-if="selected.format === 'gp'"
+            v-model="view"
+            :options="VIEW_OPTIONS"
+            label="Вид партии"
+          />
+          <span v-else class="caps-label">Ноты гитарной партии · {{ frettedNotes.length }}</span>
+          <label v-if="view === 'notes' || selected.format !== 'gp'" class="follow">
             <input v-model="follow" type="checkbox" />
             Следить за воспроизведением
           </label>
         </div>
+        <TabView
+          v-if="selected.format === 'gp' && view === 'tab' && tabSource"
+          :key="selected.id"
+          :source="tabSource"
+          :track-index="selected.guitarTrackIndex ?? 0"
+          :position="transport.position.value"
+          :duration="transport.duration.value"
+          @seek="transport.seek"
+          @play="transport.play()"
+          @pause="transport.pause()"
+        />
         <NotesTable
+          v-else
           :notes="frettedNotes"
           :tuning="tuning"
           :position="transport.position.value"
@@ -284,6 +361,30 @@ const unplayable = computed(() => countUnplayable(frettedNotes.value))
 
 .setup__tuning {
   width: 240px;
+}
+
+.detail__tuning {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-btn);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  background: var(--color-accent-bg);
+  font-size: 14px;
+  color: var(--color-accent-text);
+}
+
+.detail__tuning-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 0;
+  background: var(--color-text);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-inverse);
 }
 
 .detail__warning {

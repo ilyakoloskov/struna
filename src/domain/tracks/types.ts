@@ -27,6 +27,19 @@ export interface SongTrack {
   name: string
   instrument: TrackInstrument
   notes: readonly NoteEvent[]
+  /**
+   * Позиции нот на грифе из файла (Guitar Pro) — по индексу notes; у MIDI нет.
+   * Используются как есть, если строй совпадает с выбранным.
+   */
+  positions?: readonly NotePosition[]
+  /** Строй дорожки из файла, MIDI от низкой струны к высокой */
+  tuning?: readonly number[]
+}
+
+export interface NotePosition {
+  /** Индекс струны от самой низкой */
+  stringIndex: number
+  fret: number
 }
 
 export interface Beat {

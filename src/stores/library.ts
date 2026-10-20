@@ -58,6 +58,15 @@ export const useLibraryStore = defineStore('library', () => {
 
   async function importFile(file: File): Promise<LibraryTrack> {
     const bytes = await file.arrayBuffer()
+    if (isGuitarProFile(file.name)) {
+      // alphaTab тяжёлый — грузим только когда выбран файл Guitar Pro
+      const [at, gp] = await Promise.all([
+        import('@coderline/alphatab'),
+        import('@/domain/tracks/gpImport'),
+      ])
+      const song = gp.scoreToSong(at, gp.loadGpScore(at, new Uint8Array(bytes)), file.name)
+      return add(song, file.name, 'gp', bytes)
+    }
     const song = parseMidi(bytes, file.name)
     return add(song, file.name, 'midi', bytes)
   }
@@ -107,6 +116,13 @@ function toLibraryTrack(stored: StoredTrack): LibraryTrack {
     guitarTrackIndex: stored.guitarTrackIndex,
     addedAt: stored.addedAt,
   }
+}
+
+export const GUITAR_PRO_EXTENSIONS = ['.gp', '.gp3', '.gp4', '.gp5', '.gpx', '.gp7'] as const
+
+export function isGuitarProFile(name: string): boolean {
+  const lower = name.toLowerCase()
+  return GUITAR_PRO_EXTENSIONS.some((ext) => lower.endsWith(ext))
 }
 
 export function guitarTrackOf(track: LibraryTrack): SongTrack | undefined {

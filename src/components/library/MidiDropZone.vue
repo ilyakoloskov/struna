@@ -33,7 +33,7 @@ function onChange(event: Event) {
     <input
       ref="input"
       type="file"
-      accept=".mid,.midi,audio/midi,audio/x-midi"
+      accept=".mid,.midi,.gp,.gp3,.gp4,.gp5,.gpx,.gp7,audio/midi,audio/x-midi"
       multiple
       class="drop__input"
       @change="onChange"
@@ -42,13 +42,14 @@ function onChange(event: Event) {
       <div class="drop__icon" aria-hidden="true">
         <span v-for="n in 7" :key="n" :style="{ background: `var(--string-${8 - n})` }" />
       </div>
-      <p class="drop__title">Перетащи MIDI-файл сюда</p>
+      <p class="drop__title">Перетащи MIDI или Guitar Pro сюда</p>
       <p class="drop__hint">
-        Гитарная партия определится сама, ноты разложатся по струнам и ладам под твой строй
+        Гитарная партия определится сама. Из Guitar Pro возьмутся струны и лады из файла, из MIDI —
+        разложатся под твой строй
       </p>
     </template>
     <div class="drop__actions">
-      <button type="button" class="drop__button" @click="input?.click()">Выбрать MIDI</button>
+      <button type="button" class="drop__button" @click="input?.click()">Выбрать файл</button>
       <button type="button" class="drop__ghost" @click="emit('demo')">Демо-трек</button>
     </div>
     <p v-if="error" class="drop__error" role="alert">{{ error }}</p>

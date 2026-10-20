@@ -10,6 +10,11 @@ export function createRepository(db: StrunaDatabase) {
       return db.tracks.orderBy('addedAt').reverse().toArray()
     },
 
+    /** Исходные байты файла трека (для Guitar Pro — чтобы нарисовать табулатуру) */
+    async getTrackSource(id: string): Promise<ArrayBuffer | undefined> {
+      return (await db.tracks.get(id))?.source
+    },
+
     async saveTrack(track: StoredTrack): Promise<void> {
       await db.tracks.put(track)
     },

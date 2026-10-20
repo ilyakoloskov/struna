@@ -66,3 +66,18 @@ describe('tunings', () => {
     expect(isValidCustomMidis('E2')).toBe(false)
   })
 })
+
+describe('строй из файла', () => {
+  it('совпадение и выбор пресета', async () => {
+    const { tuningMatches, tuningSelectionFor } = await import('../tunings')
+    expect(tuningMatches(findPreset('6-drop-d')!, [38, 45, 50, 55, 59, 64])).toBe(true)
+    expect(tuningMatches(findPreset('6-drop-d')!, [40, 45, 50, 55, 59, 64])).toBe(false)
+    expect(tuningSelectionFor([38, 45, 50, 55, 59, 64])).toEqual({ tuningId: '6-drop-d' })
+    expect(tuningSelectionFor([36, 43, 48, 53, 57, 62])).toEqual({
+      tuningId: 'custom',
+      customMidis: [36, 43, 48, 53, 57, 62],
+    })
+    // 4 струны (бас) — не гитарный строй
+    expect(tuningSelectionFor([28, 33, 38, 43])).toBeNull()
+  })
+})

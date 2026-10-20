@@ -5,7 +5,7 @@ import { parseFretRange } from '@/domain/theory/fretboard'
 import { parseSpelledNote } from '@/domain/theory/notes'
 import { buildScale, findScale } from '@/domain/theory/scales'
 import { createDemoSong } from '@/domain/tracks/demoSong'
-import { assignFingering } from '@/domain/tracks/fingering'
+import { assignFingering, chartNotesFor } from '@/domain/tracks/fingering'
 import type { Beat, FrettedNote, Song } from '@/domain/tracks/types'
 import {
   EXERCISE_DEFAULT_BPM,
@@ -113,7 +113,7 @@ export function usePlaySource(trackId: Ref<string>) {
           kind: 'library',
           trackId: track.id,
           song: track.song,
-          notes: guitar ? assignFingering(guitar.notes, tuning.value) : [],
+          notes: guitar ? chartNotesFor(guitar, tuning.value) : [],
           beats: track.song.beats,
           guitarTrackIndex: track.guitarTrackIndex ?? 0,
         }

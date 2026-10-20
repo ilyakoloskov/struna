@@ -1,5 +1,6 @@
 import type { Tuning } from '@/domain/music/tunings'
-import type { FrettedNote, NoteEvent } from './types'
+import { tuningMatches } from '@/domain/music/tunings'
+import type { FrettedNote, NoteEvent, SongTrack } from './types'
 
 // Расстановка нот по струнам и ладам для MIDI, где позиций нет.
 //
@@ -291,4 +292,16 @@ function finalize(
 /** Сколько нот нельзя сыграть в этом строе */
 export function countUnplayable(notes: readonly FrettedNote[]): number {
   return notes.filter((n) => n.stringIndex < 0).length
+}
+
+/**
+ * Ноты партии для игры: позиции из файла (Guitar Pro), если строй файла совпадает с выбранным,
+ * иначе — расстановка под выбранный строй.
+ */
+export function chartNotesFor(track: SongTrack, tuning: Tuning): FrettedNote[] {
+  const { positions, tuning: fileTuning } = track
+  if (positions && fileTuning && tuningMatches(tuning, fileTuning)) {
+    return track.notes.map((note, i) => ({ ...note, ...positions[i]! }))
+  }
+  return assignFingering(track.notes, tuning)
 }

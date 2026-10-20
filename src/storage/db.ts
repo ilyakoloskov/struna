@@ -5,7 +5,7 @@ import type { SessionResult } from '@/game/results'
 // IndexedDB приложения через Dexie: библиотека треков и результаты сессий.
 // Настройки — в localStorage (маленькие и нужны синхронно на старте).
 
-export type TrackFormat = 'midi' | 'demo'
+export type TrackFormat = 'midi' | 'gp' | 'demo'
 
 export interface StoredTrack {
   id: string
