@@ -20,6 +20,21 @@ describe('tunings', () => {
     expect(notes('6-eb-standard')).toBe('E♭2 A♭2 D♭3 G♭3 B♭3 E♭4')
     expect(notes('7-standard-b')).toBe('B1 E2 A2 D3 G3 B3 E4')
     expect(notes('7-drop-a')).toBe('A1 E2 A2 D3 G3 B3 E4')
+    expect(notes('6-drop-c')).toBe('C2 G2 C3 F3 A3 D4')
+    expect(notes('7-ab-standard')).toBe('A♭1 D♭2 G♭2 B2 E3 A♭3 D♭4')
+    expect(notes('7-drop-ab')).toBe('A♭1 E♭2 A♭2 D♭3 G♭3 B♭3 E♭4')
+  })
+
+  it('A♭ Standard — стандарт B на полтора тона ниже, Drop C — Drop D на тон ниже', () => {
+    const midis = (id: string) => findPreset(id)!.strings.map((s) => s.midi)
+    expect(midis('7-ab-standard')).toEqual(midis('7-standard-b').map((m) => m - 3))
+    expect(midis('6-drop-c')).toEqual(midis('6-drop-d').map((m) => m - 2))
+    // Drop A♭ — Drop A на полтона ниже
+    expect(midis('7-drop-ab')).toEqual(midis('7-drop-a').map((m) => m - 1))
+  })
+
+  it('самая низкая нота A♭ Standard — A♭1 (≈ 52 Гц)', () => {
+    expect(lowestMidi(findPreset('7-ab-standard')!)).toBe(32)
   })
 
   it('номера струн: 1 — самая высокая', () => {
@@ -73,9 +88,11 @@ describe('строй из файла', () => {
     expect(tuningMatches(findPreset('6-drop-d')!, [38, 45, 50, 55, 59, 64])).toBe(true)
     expect(tuningMatches(findPreset('6-drop-d')!, [40, 45, 50, 55, 59, 64])).toBe(false)
     expect(tuningSelectionFor([38, 45, 50, 55, 59, 64])).toEqual({ tuningId: '6-drop-d' })
-    expect(tuningSelectionFor([36, 43, 48, 53, 57, 62])).toEqual({
+    expect(tuningSelectionFor([36, 43, 48, 53, 57, 62])).toEqual({ tuningId: '6-drop-c' })
+    // Open G (D G D G B D) — пресета нет, свой строй
+    expect(tuningSelectionFor([38, 43, 50, 55, 59, 62])).toEqual({
       tuningId: 'custom',
-      customMidis: [36, 43, 48, 53, 57, 62],
+      customMidis: [38, 43, 50, 55, 59, 62],
     })
     // 4 струны (бас) — не гитарный строй
     expect(tuningSelectionFor([28, 33, 38, 43])).toBeNull()

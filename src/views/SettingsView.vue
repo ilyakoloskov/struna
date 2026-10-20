@@ -14,7 +14,8 @@ import { LOOKAHEAD_RANGE, useSettingsStore } from '@/stores/settings'
 
 // Настройки: вход звука, строй, калибровка задержки, вид
 const settings = useSettingsStore()
-const { tuningId, customMidis, a4, noteLookahead, strictChords } = storeToRefs(settings)
+const { tuningId, customMidis, a4, noteLookahead, strictChords, hearGuitarPart } =
+  storeToRefs(settings)
 const input = useAudioInput()
 
 const deviceOptions = computed<SelectOption<string>[]>(() => [
@@ -116,6 +117,17 @@ const speed = computed({
               Аккорд засчитывается, только если прозвучал целиком: по спектру проверяется, что
               звучат именно его ноты (E мажор и E минор различаются). Выключи, если на твоей гитаре
               аккорды засчитываются плохо, — тогда хватит любой ноты аккорда.
+            </span>
+          </span>
+        </label>
+        <label class="switch">
+          <input v-model="hearGuitarPart" type="checkbox" />
+          <span class="switch__text">
+            <b>Слышать свою партию</b>
+            <span>
+              Выбранная гитарная дорожка звучит в игре как подсказка, поверх аккомпанемента. Если
+              играешь через микрофон, а не звуковую карту, лучше выключить или надеть наушники:
+              микрофон услышит подсказку из колонок и засчитает её за тебя.
             </span>
           </span>
         </label>

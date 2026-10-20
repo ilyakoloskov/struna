@@ -15,7 +15,7 @@ import type { SelectOption } from '@/components/ui/types'
 import { useTransport } from '@/composables/useTransport'
 import { pluralRu } from '@/domain/ru'
 import { formatNote } from '@/domain/music/pitch'
-import { tuningMatches, tuningSelectionFor } from '@/domain/music/tunings'
+import { findPreset, tuningMatches, tuningSelectionFor } from '@/domain/music/tunings'
 import { chartNotesFor, countUnplayable } from '@/domain/tracks/fingering'
 import { GpImportError } from '@/domain/tracks/gpImport'
 import { MidiImportError } from '@/domain/tracks/midiImport'
@@ -74,13 +74,15 @@ async function onFiles(files: File[]) {
   }
 }
 
-// Новый выбранный трек — загружаем сэмплы его инструментов
+// Новый выбранный трек — загружаем сэмплы его инструментов.
+// В превью выбранная партия звучит: слышно то, что видно в табулатуре.
+// Глушится она только в игре — там её играет игрок.
 watch(
   () => selected.value?.id,
   () => {
     const track = selected.value
     if (!track) return
-    transport.setOptions({ guitarTrackIndex: track.guitarTrackIndex })
+    transport.setOptions({ guitarTrackIndex: track.guitarTrackIndex, guitarAudible: true })
     void transport.load(track.song)
   },
   { immediate: true },
@@ -116,10 +118,14 @@ const frettedNotes = computed(() =>
 const fileTuning = computed(() => {
   const midis = guitarTrack.value?.tuning
   if (!midis || tuningMatches(tuning.value, midis)) return null
-  return {
-    notes: midis.map((m) => formatNote(m, 'sharp')).join(' '),
-    selection: tuningSelectionFor(midis),
-  }
+  const selection = tuningSelectionFor(midis)
+  // Строй файла совпал с пресетом — называем его и пишем ноты, как в пресете (A♭, а не G♯)
+  const preset =
+    selection && selection.tuningId !== 'custom' ? findPreset(selection.tuningId) : null
+  const notes = preset
+    ? preset.strings.map((s) => `${s.name}${s.octave}`).join(' ')
+    : midis.map((m) => formatNote(m, 'sharp')).join(' ')
+  return { notes: preset ? `${preset.label} (${notes})` : notes, selection }
 })
 
 function useFileTuning() {

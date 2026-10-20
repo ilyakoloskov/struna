@@ -3,7 +3,15 @@ import { midiToNoteName, parseNote, type Accidental } from './pitch'
 // Строй — единый источник правды для тюнера, расчёта ладов и подписей струн.
 
 export type TuningId =
-  '6-standard-e' | '6-drop-d' | '6-eb-standard' | '7-standard-b' | '7-drop-a' | 'custom'
+  | '6-standard-e'
+  | '6-drop-d'
+  | '6-eb-standard'
+  | '6-drop-c'
+  | '7-standard-b'
+  | '7-drop-a'
+  | '7-ab-standard'
+  | '7-drop-ab'
+  | 'custom'
 
 export interface TuningString {
   /** Номер струны как у гитаристов: 1 — самая высокая */
@@ -46,9 +54,22 @@ export function createTuning(id: TuningId, label: string, notes: readonly string
 export const TUNING_PRESETS: readonly Tuning[] = [
   createTuning('7-standard-b', '7 стр. · Standard B', ['B1', 'E2', 'A2', 'D3', 'G3', 'B3', 'E4']),
   createTuning('7-drop-a', '7 стр. · Drop A', ['A1', 'E2', 'A2', 'D3', 'G3', 'B3', 'E4']),
+  // Стандарт на полтора тона ниже; B и E — без бемолей, как принято в табулатурах
+  createTuning('7-ab-standard', '7 стр. · A♭ Standard', [
+    'Ab1',
+    'Db2',
+    'Gb2',
+    'B2',
+    'E3',
+    'Ab3',
+    'Db4',
+  ]),
+  // E♭ Standard на 7 струнах, нижняя опущена на тон
+  createTuning('7-drop-ab', '7 стр. · Drop A♭', ['Ab1', 'Eb2', 'Ab2', 'Db3', 'Gb3', 'Bb3', 'Eb4']),
   createTuning('6-standard-e', '6 стр. · Standard E', ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']),
   createTuning('6-drop-d', '6 стр. · Drop D', ['D2', 'A2', 'D3', 'G3', 'B3', 'E4']),
   createTuning('6-eb-standard', '6 стр. · E♭ Standard', ['Eb2', 'Ab2', 'Db3', 'Gb3', 'Bb3', 'Eb4']),
+  createTuning('6-drop-c', '6 стр. · Drop C', ['C2', 'G2', 'C3', 'F3', 'A3', 'D4']),
 ]
 
 export const DEFAULT_TUNING_ID: TuningId = '7-standard-b'

@@ -78,3 +78,29 @@ describe('YinDetector', () => {
     ).toThrow()
   })
 })
+
+describe('A♭ Standard (7 стр.): самая низкая струна A♭1 ≈ 52 Гц', () => {
+  const low = createAnalysisConfig(SR, 32, 61)
+  const lowDetector = new YinDetector(low)
+  const analyzeLow = (freq: number, options: Partial<ToneOptions> = {}) => {
+    const lowpass = new BiquadLowpass(SR, low.lowpassHz)
+    const signal = tone(freq, { sampleRate: SR, length: low.frameSize * 2, ...options })
+    const filtered = signal.map((x) => lowpass.process(x))
+    return lowDetector.detect(filtered.subarray(filtered.length - low.frameSize))
+  }
+
+  it('окно под A♭1 — не длиннее ~46 мс', () => {
+    expect(low.frameSize / SR).toBeLessThan(0.046)
+  })
+
+  it('A♭1: точно, со слабым основным тоном и на затухающем хвосте', () => {
+    const freq = midiToFreq(32)
+    expect(Math.abs(centsBetween(analyzeLow(freq, { noise: 0.01 }).freq, freq))).toBeLessThan(2)
+    const weak = analyzeLow(freq, { harmonics: [0.3, 1, 0.7, 0.5, 0.3], noise: 0.005 })
+    expect(Math.abs(centsBetween(weak.freq, freq))).toBeLessThan(5)
+    for (const seed of [1, 2, 3]) {
+      const tail = analyzeLow(freq, { amplitude: 0.015, noise: 0.002, seed })
+      expect(Math.abs(centsBetween(tail.freq, freq))).toBeLessThan(3)
+    }
+  })
+})

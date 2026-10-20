@@ -32,7 +32,8 @@ const props = defineProps<{ trackId: string }>()
 
 const route = useRoute()
 const router = useRouter()
-const { tuning } = storeToRefs(useSettingsStore())
+const settings = useSettingsStore()
+const { tuning } = storeToRefs(settings)
 const results = useResultsStore()
 const showFps = computed(() => 'fps' in route.query)
 const autoplay = 'autoplay' in route.query
@@ -195,8 +196,8 @@ watch(
     if (!next || !source.value) return
     transport.setOptions({
       guitarTrackIndex: source.value.guitarTrackIndex,
-      // Гитарную партию играет игрок; в автоигре — слышно, чтобы было с чем сверять
-      guitarAudible: autoplay,
+      // Своя партия звучит как подсказка (настройка); в автоигре — всегда, чтобы было с чем сверять
+      guitarAudible: autoplay || settings.hearGuitarPart,
       countIn: true,
       // В упражнении аккомпанемента нет — нужен метроном
       metronome: kind.value === 'exercise',
@@ -208,6 +209,13 @@ watch(
   },
   { immediate: true },
 )
+
+/** Слышать свою партию — запоминается для следующих игр (кроме автоигры) */
+function toggleGuitarPart() {
+  const audible = !transport.options.value.guitarAudible
+  transport.setOptions({ guitarAudible: audible })
+  if (!autoplay) settings.hearGuitarPart = audible
+}
 
 /** Сохранить результат и открыть экран результатов */
 function finish() {
@@ -443,11 +451,9 @@ function exit() {
               type="button"
               class="chip"
               :class="{ 'chip--on': transport.options.value.guitarAudible }"
-              @click="
-                transport.setOptions({ guitarAudible: !transport.options.value.guitarAudible })
-              "
+              @click="toggleGuitarPart"
             >
-              Гитарная партия
+              Моя партия
             </button>
             <button
               type="button"

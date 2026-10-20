@@ -52,8 +52,8 @@ const NOTE_WIDTH = 0.8
 const NOTE_HEIGHT = 0.56
 /** Номер лада на плашке и знаки приёмов над ней, доли расстояния между струнами */
 const LABEL_SIZE = 0.52
-const MARK_SIZE = 0.5
-const MARK_GAP = 0.05
+/** Знаки приёмов — бейджи в верхних углах плашки: над плашкой они наезжали на соседние ноты */
+const MARK_SIZE = 0.42
 const TAIL_WIDTH = 0.19
 /** Сколько секунд плашка видна после линии удара */
 const NOTE_PAST = 0.06
@@ -156,7 +156,8 @@ export class LaneRenderer {
       powerPreference: 'high-performance',
       antialias: false,
       stencil: false,
-      depth: false,
+      // Глубина нужна только проходу надписей: ближняя плашка закрывает надписи дальних
+      depth: true,
     })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     // Цвет очистки three переводит в sRGB, а postprocessing кодирует кадр в sRGB ещё раз —
@@ -277,6 +278,7 @@ export class LaneRenderer {
     }
     this.composer.render()
     // Композер не очищает экран перед следующим рендером (autoClear выключен им же)
+    this.renderer.clearDepth()
     this.renderer.render(this.overlay, this.camera)
   }
 
@@ -382,22 +384,17 @@ export class LaneRenderer {
       ;(a.aMute!.array as Float32Array)[i] = looks.mute[index] ?? 0
       this.noteCount++
 
-      // Номер лада на плашке и знаки приёмов над ней
+      // Номер лада в центре плашки, знаки приёмов — в верхних углах (первый справа, второй слева)
       const spacing = layout.stringSpacing
       const label = (NOTE_HEIGHT - LABEL_SIZE) / 2
       this.pushLabel(x, z, LABEL_SIZE * spacing, label * spacing, looks.label[index] ?? 0, alpha)
-      let marks = 0
-      while (marks < MAX_MARKS && (looks.marks[index * MAX_MARKS + marks] ?? -1) >= 0) marks++
-      for (let k = 0; k < marks; k++) {
-        const dx = (k - (marks - 1) / 2) * MARK_SIZE * spacing
-        this.pushLabel(
-          x + dx,
-          z,
-          MARK_SIZE * spacing,
-          (NOTE_HEIGHT + MARK_GAP) * spacing,
-          looks.marks[index * MAX_MARKS + k]!,
-          alpha,
-        )
+      const corner = ((NOTE_WIDTH - MARK_SIZE) / 2 + 0.06) * spacing
+      const markLift = (NOTE_HEIGHT - MARK_SIZE * 0.6) * spacing
+      for (let k = 0; k < MAX_MARKS; k++) {
+        const glyph = looks.marks[index * MAX_MARKS + k] ?? -1
+        if (glyph < 0) break
+        const dx = k === 0 ? corner : -corner
+        this.pushLabel(x + dx, z, MARK_SIZE * spacing, markLift, glyph, alpha)
       }
     }
   }
@@ -622,6 +619,26 @@ export class LaneRenderer {
       this.overlay,
     )
     this.labelsLayer.mesh.visible = false
+    // Надпись ложится в плоскость своей плашки — чуть к камере, чтобы не мерцать
+    this.labelMaterial.polygonOffset = true
+    this.labelMaterial.polygonOffsetFactor = -1
+    this.labelMaterial.polygonOffsetUnits = -4
+    this.labelMaterial.depthTest = true
+
+    // Силуэты плашек в проход надписей — только в глубину, без цвета; те же буферы инстансов
+    const occluderMaterial = new ShaderMaterial({
+      vertexShader: glsl.noteVertex,
+      fragmentShader: glsl.occluderFragment,
+      depthTest: true,
+      depthWrite: true,
+      colorWrite: false,
+      uniforms: { uLength: lengthUniform, uUp: upUniform },
+    })
+    const occluders = new Mesh(this.notesLayer.geometry, occluderMaterial)
+    occluders.renderOrder = -1
+    occluders.frustumCulled = false
+    this.overlay.add(occluders)
+    this.disposables.push(occluderMaterial)
     this.particlesLayer = this.instanced(
       PARTICLE_CAPACITY,
       { aOffset: 3, aSize: 2, aColor: 3 },

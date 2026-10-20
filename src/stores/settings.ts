@@ -26,6 +26,8 @@ interface PersistedSettings {
   noteLookahead: number
   /** Аккорды засчитываются только целиком (по хромаграмме), а не по любой ноте */
   strictChords: boolean
+  /** В игре звучит своя (выбранная) гитарная партия — как подсказка */
+  hearGuitarPart: boolean
 }
 
 export const LATENCY_OFFSET_LIMIT = 300
@@ -72,6 +74,9 @@ export const useSettingsStore = defineStore('settings', () => {
   )
 
   const strictChords = ref(typeof saved.strictChords === 'boolean' ? saved.strictChords : true)
+  const hearGuitarPart = ref(
+    typeof saved.hearGuitarPart === 'boolean' ? saved.hearGuitarPart : true,
+  )
 
   const tuning = computed<Tuning>(() =>
     tuningId.value === 'custom'
@@ -84,7 +89,16 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   watch(
-    [tuningId, customMidis, inputDeviceId, a4, latencyOffsetMs, noteLookahead, strictChords],
+    [
+      tuningId,
+      customMidis,
+      inputDeviceId,
+      a4,
+      latencyOffsetMs,
+      noteLookahead,
+      strictChords,
+      hearGuitarPart,
+    ],
     () => {
       const data: PersistedSettings = {
         tuningId: tuningId.value,
@@ -94,6 +108,7 @@ export const useSettingsStore = defineStore('settings', () => {
         latencyOffsetMs: latencyOffsetMs.value,
         noteLookahead: noteLookahead.value,
         strictChords: strictChords.value,
+        hearGuitarPart: hearGuitarPart.value,
       }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
@@ -112,6 +127,7 @@ export const useSettingsStore = defineStore('settings', () => {
     latencyOffsetMs,
     noteLookahead,
     strictChords,
+    hearGuitarPart,
     tuning,
     setCustomMidis,
   }
