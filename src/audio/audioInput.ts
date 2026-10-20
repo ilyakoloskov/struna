@@ -2,6 +2,7 @@
 // Без Vue — используется тюнером, живым грифом и игрой через composables.
 
 import processorUrl from './worklets/pitch-processor.ts?worker&url'
+import { getAudioContext, resumeAudioContext } from './context'
 import { createAnalysisConfig } from './dsp/analysisConfig'
 import {
   PITCH_PROCESSOR_NAME,
@@ -33,7 +34,6 @@ export class AudioInputError extends Error {
 
 /** −60 dBFS: тише этого высоту не считаем */
 const GATE_RMS = 0.001
-const RESUME_WAIT_MS = 300
 
 type FrameListener = (frame: AnalysisFrameMessage) => void
 
@@ -116,9 +116,8 @@ export class AudioInput {
     this.source.connect(this.node)
     // Выход процессора — тишина; подключение к destination гарантирует, что граф обрабатывается
     this.node.connect(context.destination)
-    // Без жеста пользователя resume() может не завершиться никогда (политика автозапуска).
-    // Ждём недолго: если контекст остался приостановлен, UI попросит нажать кнопку.
-    await Promise.race([context.resume(), delay(RESUME_WAIT_MS)])
+    // Если контекст остался приостановлен (нет жеста пользователя), UI попросит нажать кнопку
+    await resumeAudioContext()
   }
 
   /** Перенастройка окна анализа под новый строй без перезапуска потока */
@@ -129,16 +128,16 @@ export class AudioInput {
 
   /** Возобновить AudioContext после жеста пользователя (политика автозапуска) */
   async resume(): Promise<void> {
-    await this.context?.resume()
+    await resumeAudioContext()
   }
 
   get isSuspended(): boolean {
     return this.context?.state === 'suspended'
   }
 
+  /** Освобождает микрофон; общий AudioContext не трогаем — в нём может играть трек */
   async stop(): Promise<void> {
     this.releaseStream()
-    await this.context?.suspend()
   }
 
   private configure() {
@@ -154,7 +153,7 @@ export class AudioInput {
 
   private async ensureContext(): Promise<AudioContext> {
     if (!this.context) {
-      this.context = new AudioContext({ latencyHint: 'interactive' })
+      this.context = getAudioContext()
       this.workletLoaded = this.context.audioWorklet.addModule(processorUrl)
     }
     await this.workletLoaded
@@ -170,10 +169,6 @@ export class AudioInput {
     this.source = null
     this.stream = null
   }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function toInputError(error: unknown): AudioInputError {

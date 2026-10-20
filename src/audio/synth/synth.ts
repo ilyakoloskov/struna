@@ -1,20 +1,15 @@
 import { DEFAULT_A4, midiToFreq } from '@/domain/music/pitch'
+import { getAudioContext, resumeAudioContext } from '../context'
 import { pluck } from './pluck'
 
-// Проигрывание нот по клику (гриф, круг). Отдельный AudioContext на выход:
-// вход для анализа живёт своей жизнью и может быть выключен.
+// Проигрывание нот по клику (гриф, круг) в общем AudioContext
 
-let context: AudioContext | null = null
 const cache = new Map<string, { buffer: AudioBuffer; playbackRate: number }>()
 
-function getContext(): AudioContext {
-  context ??= new AudioContext({ latencyHint: 'interactive' })
-  return context
-}
-
 export async function playNote(midi: number, a4 = DEFAULT_A4): Promise<void> {
-  const ctx = getContext()
-  if (ctx.state === 'suspended') await ctx.resume()
+  const ctx = getAudioContext()
+  // Клик — жест пользователя, поэтому контекст запустится
+  await resumeAudioContext()
 
   const cacheKey = `${midi}@${a4}`
   let sound = cache.get(cacheKey)
